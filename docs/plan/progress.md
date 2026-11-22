@@ -92,3 +92,9 @@ Newest phase last. Each entry: built, deviations from the plan, open issues, nex
 ## Package rename (pre-P4)
 - Orchestrator package `com.example.orchestrator` -> `com.sdlcagent.orchestrator` (groupId `com.sdlcagent`); generated app package `com.example.shortener` -> `com.sdlcagent.urlshortener` (scaffold templates + Scaffolder). 62 tests green (2 live skipped).
 - Pre-rename backup: `C:\Users\priya\OneDrive\Documents\New Work Prep\AI\Backup\agentic-sdlc-url-shortener-pre-rename`
+
+## P4 pre-work: agent structure decided (2026-11-22)
+- Reviewed redis-developer/multi-agent-app-spring-ai (1-orchestration). Adopted its modular per-agent package idea; design is in `docs/plan/00-foundational-plan.md` §3a (base/ package with `SdlcAgent<R>`, `AbstractLlmAgent<R>`, `AgentExecutor`, `AgentRegistrar`, `PromptLoader`; one sub-package per agent holding agent, record result, gate, prompt in `resources/prompts/`).
+- Deliberately NOT adopted: Redis chat memory, LLM-driven `finishReason` control flow, inline prompts, fixed linear pipeline.
+- P4 should build `agents/base/` first (with tests), then agents in stage order, then a greenfield dry-run via replay fixtures.
+- Initial commit `c88a537` exists on main; git identity is set repo-locally.
