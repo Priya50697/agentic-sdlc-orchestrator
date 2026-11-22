@@ -10,7 +10,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - [x] P1 llm/, observability/, persistence/, pom+mvnw, CLAUDE.md
 - [x] P2 engine/ + governance/ + engine tests with FakeLlmClient
 - [x] P3 workspace/ (scaffold, git, maven, sandbox), context/ (CodeIndexer), REST + console
-- [ ] P4 7 agents + prompts + schemas; dry-run greenfield
+- [x] P4 7 agents + prompts + schemas; dry-run greenfield
 - [ ] P5 live Greenfield, export to docs/runs/
 - [ ] P6 Brownfield + Ambiguous
 - [ ] P7 docs 01-04, README, final replay run
@@ -19,6 +19,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - Build+test: `cd orchestrator; .\mvnw.cmd test` (PowerShell) — exit code 0 = green
 - Live CLI smoke test (costs ~$0.0002): set `CLAUDE_CLI_LIVE=1`, run `.\mvnw.cmd test`
 - Scaffold build check (needs Maven repo access): set `SCAFFOLD_LIVE=1`, run `.\mvnw.cmd test -Dtest=ScaffoldBuildLiveTest`
+- Fixture build check (real Maven on the dry-run fixtures): `SCAFFOLD_LIVE=1`, `.\mvnw.cmd test -Dtest=FixtureBuildLiveTest`
 - Console run: `.\mvnw.cmd spring-boot:run -Dspring-boot.run.arguments="--orchestrator.cli.scenario=greenfield --spring.main.web-application-type=none"`
 - Anthropic API profile: `-Dspring.profiles.active=anthropic` + env `ANTHROPIC_API_KEY`
 - Regenerate wrapper (only if lost): IntelliJ's `plugins/maven-plugin/lib/maven3/bin/mvn.cmd wrapper:wrapper -Dmaven=3.9.9`
@@ -33,7 +34,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - `context/` CodeIndexer -> CodeIndex, ContextAssembler (char budget)
 - `service/` RunService (facade for REST+console), EngineConfigCustomizer (P4 registers agents/gates/expanders as beans of this type)
 - `api/` RunController, ApprovalController; `cli/` ConsoleRunner/ConsoleSession/Scenarios
-- planned: `agents/` (see plan §1)
+- `agents/` base/ (SdlcAgent, AbstractLlmAgent, AgentRegistrar, PromptLoader) + one package per agent with its gate(s); prompts in `resources/prompts/`; per-agent write scope in `governance/AgentPermissions`
 
 ## Core contracts
 - `LlmResponse complete(LlmRequest)`; `LlmRequest(system, user, model?, timeout?)`; `LlmResponse(text, model, inputTokens, outputTokens, costUsd, durationMs, cacheHit)`; failures throw `LlmException(Kind)`

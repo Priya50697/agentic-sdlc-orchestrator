@@ -15,6 +15,13 @@ public class PolicyEngine {
                 Policies.PomAllowlist.defaults(), Policies.ChangeControl.defaults()));
     }
 
+    /** A copy with one more policy appended. */
+    public PolicyEngine with(Policy extra) {
+        List<Policy> all = new ArrayList<>(policies);
+        all.add(extra);
+        return new PolicyEngine(all);
+    }
+
     public List<Violation> evaluate(PolicyInput input) {
         List<Violation> all = new ArrayList<>();
         for (Policy p : policies) all.addAll(p.evaluate(input));

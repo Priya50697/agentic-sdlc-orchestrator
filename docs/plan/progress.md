@@ -98,3 +98,32 @@ Newest phase last. Each entry: built, deviations from the plan, open issues, nex
 - Deliberately NOT adopted: Redis chat memory, LLM-driven `finishReason` control flow, inline prompts, fixed linear pipeline.
 - P4 should build `agents/base/` first (with tests), then agents in stage order, then a greenfield dry-run via replay fixtures.
 - Initial commit `c88a537` exists on main; git identity is set repo-locally.
+
+## P4 — agents, gates, permissions, scripted greenfield dry-run (DONE 2026-11-22)
+
+**Verified:** `orchestrator\mvnw.cmd test` -> exit 0, 84 tests in the new package (2 opt-in live tests skipped). New: `RequirementsAgentTest`, `GatesAndHelpersTest`, `AgentPermissionsTest`, `GreenfieldDryRunTest`. No real LLM or Maven process was used anywhere in P4.
+
+**Built (`agents/`, design per plan §3a):**
+- `base/`: `SdlcAgent` (key + run), `AbstractLlmAgent<R>` (prompt -> LlmClient -> JsonResponseParser -> record; one repair attempt with the parse/validate error fed back; hooks `validate(ctx,r)`, `finish`, `onGiveUp`), `AgentExecutor` (never lets null/exception escape), `AgentRegistrar` (`@Order(0)`; wires agents, `GateBean`s, `ExpanderBean`s and the AgentScope policy into every engine), `PromptLoader` (fails fast), `OwnerResolver` (file/class -> `impl:<task>` from the task graph), `FileEntry`, `Json`.
+- One package per agent: `requirements/` (+`RequirementsGate`, Gate 0 on BLOCKING ambiguity), `codebase/` (+`ImpactGate`), `architecture/` (+`ArchitectureGate`: schema, acyclic, AC coverage both ways, src/main only, project package, layer naming rules; `TaskGraphExpander`), `implementation/` (`ImplementerAgent` limited to its task's targetPaths; `CompileGateExecutor`), `testing/` (`TestEngineerAgent` + `TestsGate`), `docs/` (`DocWriterAgent` with template fallback + `DocsGate`), `release/` (`ReleaseReviewerAgent`, `ReleaseGate`, `ReleaseFacts`).
+- Prompts + output JSON shapes in `resources/prompts/<key>.md` (8 files; the shapes live in the prompts, there are no separate schema files).
+- `governance/AgentPermissions` + `Policies.AgentScope`: per-agent write globs, may-delete, allowed artifact ids; HIGH severity (attempt fails, audited, retried with feedback). Unknown agent = may do nothing. `PolicyInput` now carries the agent key (old 3-arg constructor kept); `PolicyEngine.with(policy)`.
+
+**Deviations / decisions:**
+- `SdlcAgent` is not generic (so `compile-gate` can implement it); the typed record lives in `AbstractLlmAgent<R>`.
+- The engine applies file changes only after exit gates, so `TestEngineerAgent` runs the tests in a scratch copy of the workspace (`MavenRunner.withWorkspace(dir)`), builds the `TestReport` from real Surefire results and AC ids found in `@DisplayName("AC-n ...")`, and returns the test files as changes. `TestsGate` only judges that report. Same pattern: executors compute facts, gates re-derive them (`ReleaseGate` recomputes from the audit log).
+- LLM output records are separate from measured artifacts (`TestSuite` -> `TestReport`, `DocSet` -> `DocReport`, `ReleaseReview` -> `ReleaseReadinessReport`).
+- Parse/schema failures use `FailureKind.TRANSIENT` (no SCHEMA/PARSE kinds exist).
+- Release stage also stores `release-report.md` (for the Gate 2 reviewer).
+- Tests/fixtures: `dryrun/GreenfieldFixtures` (scripted replies), `dryrun/FakeMaven` (no process; one injected javac error at wave 1; turns `@DisplayName`s into Surefire cases). The dry run exercises: non-JSON architect reply (repair), T3 writing a file it doesn't own (rejected), Gate 1 reject + replan with feedback, wave-1 compile error routed back to `impl:T1` (route-back + MTTR recorded), parallel testing || docs, join, Gate 2, hash-chain verifies, files land in the workspace.
+
+**Bug found and fixed (P3 code):** `CodeIndexer` used the static JavaParser, which is not thread-safe; testing and docs run in parallel, so one of them intermittently got the regex fallback (no endpoints) and `docs-valid` failed. Now one `JavaParser` per call.
+
+**Open issues / for P5:**
+- Fixture sources verified under real Maven: `SCAFFOLD_LIVE=1 .\mvnw.cmd test -Dtest=FixtureBuildLiveTest` (scaffold + fixtures, `mvnw test`: compiles, 4 tests pass, ~27 s). The scripted dry run itself still uses FakeMaven.
+- Brownfield (ImpactGate, CodebaseAnalyst) and Gate 0 are unit-tested only, not yet run end to end (P6).
+- `CodeIndexer` still skips private methods/fields; `DocsGate` matches endpoints by `VERB /path` text, so a README that lists an endpoint in prose without that form counts as missing.
+- Ideas from a suggested scenario set that we may adopt in P6/P7: a scripted Gate 0 answer file for the ambiguous scenario; a canned Gate 1 rejection line for brownfield. Scenario texts stay as `.md` (cheaper than the richer 6-requirement prompt).
+- Nothing committed yet (user has not asked).
+
+**Next (P5):** live Greenfield with the real CLI (pin a stronger model than the haiku default), record to the cache, export to `docs/runs/greenfield/`. Run the scaffold build check first (`SCAFFOLD_LIVE=1`).

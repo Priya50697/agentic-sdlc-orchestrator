@@ -3,7 +3,8 @@ package com.sdlcagent.orchestrator.context;
 import com.sdlcagent.orchestrator.context.CodeIndex.ClassInfo;
 import com.sdlcagent.orchestrator.context.CodeIndex.Endpoint;
 import com.github.javaparser.ParserConfiguration;
-import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseResult;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -41,10 +42,8 @@ public class CodeIndexer {
     private static final Pattern FALLBACK_PACKAGE = Pattern.compile("(?m)^\\s*package\\s+([\\w.]+)\\s*;");
     private static final Pattern FALLBACK_ANNOTATION = Pattern.compile("(?m)^\\s*(@\\w+)");
 
-    static {
-        ParserConfiguration cfg = new ParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
-        StaticJavaParser.setConfiguration(cfg);
-    }
+    private static final ParserConfiguration PARSER_CONFIG =
+            new ParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
 
     public CodeIndex index(Path workspace) {
         Path root = workspace.toAbsolutePath().normalize();
@@ -67,7 +66,10 @@ public class CodeIndexer {
 
     List<ClassInfo> indexFile(String relPath, String source) {
         try {
-            CompilationUnit cu = StaticJavaParser.parse(source);
+            // StaticJavaParser shares mutable state and is not thread-safe; agents index from parallel workers
+            ParseResult<CompilationUnit> parsed = new JavaParser(PARSER_CONFIG).parse(source);
+            if (!parsed.isSuccessful() || parsed.getResult().isEmpty()) return fallback(relPath, source);
+            CompilationUnit cu = parsed.getResult().get();
             String pkg = cu.getPackageDeclaration().map(p -> p.getNameAsString()).orElse("");
             List<ClassInfo> result = new ArrayList<>();
             for (TypeDeclaration<?> t : cu.getTypes()) result.add(fromType(relPath, pkg, t));

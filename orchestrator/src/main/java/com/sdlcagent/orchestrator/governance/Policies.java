@@ -149,4 +149,39 @@ public final class Policies {
             return out;
         }
     }
+
+    /** Bounds each agent's writes and artifacts to its row in {@link AgentPermissions}. */
+    public static class AgentScope implements Policy {
+        private final AgentPermissions permissions;
+
+        public AgentScope(AgentPermissions permissions) {
+            this.permissions = permissions;
+        }
+
+        @Override public String id() { return "agent.scope"; }
+
+        @Override
+        public List<Violation> evaluate(PolicyInput in) {
+            List<Violation> out = new ArrayList<>();
+            if (in.agent() == null) return out;
+            AgentPermissions.Permission perm = permissions.of(in.agent());
+            String who = "agent '" + in.agent() + "'";
+            for (FileChange c : in.changes()) {
+                if (escapesSandbox(c.path())) continue; // reported as CRITICAL by change control
+                if (c.op() == FileChange.Op.DELETE && !perm.mayDelete()) {
+                    out.add(new Violation(id(), Severity.HIGH, who + " may not delete files: " + c.path(), c.path()));
+                } else if (!perm.allowsWrite(c.path())) {
+                    out.add(new Violation(id(), Severity.HIGH,
+                            who + " may not write " + c.path() + " (allowed: " + perm.writeGlobs() + ")", c.path()));
+                }
+            }
+            for (String artifact : in.artifacts().keySet()) {
+                if (!perm.artifacts().contains(artifact)) {
+                    out.add(new Violation(id(), Severity.HIGH,
+                            who + " may not produce artifact '" + artifact + "' (allowed: " + perm.artifacts() + ")", null));
+                }
+            }
+            return out;
+        }
+    }
 }

@@ -59,6 +59,7 @@ class RunApiTest {
     @TestConfiguration
     static class FakeAgents {
         @Bean
+        @org.springframework.core.annotation.Order(100)
         EngineConfigCustomizer fakeAgents() {
             return (runId, c) -> {
                 c.executor("requirements", ctx -> NodeResult.ok(Map.of(SPEC, "spec")));

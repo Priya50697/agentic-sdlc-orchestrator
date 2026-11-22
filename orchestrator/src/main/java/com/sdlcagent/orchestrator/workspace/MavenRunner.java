@@ -28,6 +28,11 @@ public class MavenRunner {
         this.timeout = timeout;
     }
 
+    /** Same settings, different project directory (e.g. a scratch copy of the workspace). */
+    public MavenRunner withWorkspace(Path dir) {
+        return new MavenRunner(dir, timeout);
+    }
+
     public Result compile() {
         return mvn("-B", "-q", "compile");
     }

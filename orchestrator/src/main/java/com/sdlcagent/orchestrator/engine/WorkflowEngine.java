@@ -327,7 +327,7 @@ public class WorkflowEngine {
         }
 
         NodeResult r = a.result();
-        List<Violation> violations = cfg.policyEngine.evaluate(new PolicyInput(n.id, r.changes(), r.artifacts()));
+        List<Violation> violations = cfg.policyEngine.evaluate(new PolicyInput(n.id, n.agent, r.changes(), r.artifacts()));
         for (Violation v : violations) {
             audit.log(AuditEventType.POLICY_VIOLATION, n.id, AuditLogger.data(
                     "policy", v.policyId(), "severity", v.severity().name(), "message", v.message(), "path", v.path()));
