@@ -50,7 +50,7 @@ class ClaudeCliAdapterTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "CLAUDE_CLI_LIVE", matches = "1")
     void liveRoundTrip() {
-        var adapter = new ClaudeCliAdapter("claude", "haiku", Duration.ofSeconds(90));
+        var adapter = new ClaudeCliAdapter("claude", "sonnet", Duration.ofSeconds(90));
         LlmResponse r = adapter.complete(LlmRequest.of("You are terse.", "Reply with exactly: OK"));
         assertThat(r.text()).contains("OK");
     }

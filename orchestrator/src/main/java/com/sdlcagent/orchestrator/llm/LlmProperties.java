@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record LlmProperties(String model, Duration timeout, String cliExecutable,
                             CachingLlmClient.Mode cacheMode, Path stateRoot) {
     public LlmProperties {
-        model = model == null ? "haiku" : model;
+        model = model == null ? "sonnet" : model;
         timeout = timeout == null ? Duration.ofMinutes(5) : timeout;
         cliExecutable = cliExecutable == null ? "claude" : cliExecutable;
         cacheMode = cacheMode == null ? CachingLlmClient.Mode.RECORD : cacheMode;

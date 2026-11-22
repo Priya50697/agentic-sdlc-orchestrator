@@ -127,3 +127,7 @@ Newest phase last. Each entry: built, deviations from the plan, open issues, nex
 - Nothing committed yet (user has not asked).
 
 **Next (P5):** live Greenfield with the real CLI (pin a stronger model than the haiku default), record to the cache, export to `docs/runs/greenfield/`. Run the scaffold build check first (`SCAFFOLD_LIVE=1`).
+
+## Pre-P5 (2026-11-22)
+- Default backend model is now `sonnet` (`application.yml` `orchestrator.llm.model`, and the `LlmProperties` fallback). The `anthropic` profile still says `claude-haiku-5-5` (not used; no API key). Live smoke test (`CLAUDE_CLI_LIVE=1`) now uses `sonnet` and passed: `claude -p` is logged in and the alias resolves.
+- P5 uses `claude -p` (subscription), not the Anthropic API. Run with cache-mode `record`.

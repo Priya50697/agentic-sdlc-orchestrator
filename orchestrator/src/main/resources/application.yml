@@ -11,7 +11,7 @@ orchestrator:
     maven-timeout: 5m
     project-package: com.sdlcagent.urlshortener
   llm:
-    model: haiku            # claude -p alias; override per run
+    model: sonnet           # claude -p alias; override per run (haiku is only for cheap smoke tests)
     timeout: 5m
     cache-mode: record      # record | replay | off
     state-root: ../.orchestrator   # repo-root .orchestrator (gitignored)
