@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: orchestrator
+  ai:
+    model:
+      chat: none            # Spring AI stays inert unless the "anthropic" profile is active
+
+orchestrator:
+  workspace:
+    dir: ../url-shortener            # generated app (tracked by the outer repo)
+    maven-timeout: 5m
+    project-package: com.sdlcagent.urlshortener
+  llm:
+    model: haiku            # claude -p alias; override per run
+    timeout: 5m
+    cache-mode: record      # record | replay | off
+    state-root: ../.orchestrator   # repo-root .orchestrator (gitignored)
+
+---
+spring:
+  config:
+    activate:
+      on-profile: anthropic
+  ai:
+    model:
+      chat: anthropic
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        options:
+          model: claude-haiku-5-5
+          max-tokens: 8192
+
+orchestrator:
+  llm:
+    model: claude-haiku-5-5
