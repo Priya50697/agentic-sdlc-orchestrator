@@ -8,6 +8,20 @@ public class FailureRouter {
 
     /** repeatedSignature: this exact failure (node + signature) has been seen before in this run. */
     public Decision route(String nodeId, FailureInfo f, boolean repeatedSignature) {
+        return route(nodeId, f, repeatedSignature ? 2 : 1);
+    }
+
+    /** Same failure this many times in a row seen for a code defect: another identical fix attempt will not help. */
+    public static final int MAX_SAME_CODE_FAILURE = 3;
+
+    /** timesSeen: how often this exact failure (node + signature) has occurred in this run, including now. */
+    public Decision route(String nodeId, FailureInfo f, int timesSeen) {
+        boolean repeatedSignature = timesSeen > 1;
+        boolean codeDefect = f.kind() == FailureKind.COMPILE_MAIN || f.kind() == FailureKind.EXCEPTION_MAIN;
+        if (codeDefect && timesSeen >= MAX_SAME_CODE_FAILURE) {
+            return new Decision(Action.SAFE_STOP, null, "same " + f.kind() + " failure at "
+                    + f.signature() + " repeated " + timesSeen + " times: not converging, stopping early");
+        }
         return switch (f.kind()) {
             case COMPILE_TEST -> retry("test compile error: retry the test author");
             case COMPILE_MAIN -> back(nodeId, f, "main compile error: back to owning implementation task");

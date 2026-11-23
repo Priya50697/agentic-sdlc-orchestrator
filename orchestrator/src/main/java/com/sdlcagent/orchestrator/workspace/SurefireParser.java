@@ -7,7 +7,9 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -47,6 +49,9 @@ public final class SurefireParser {
     }
 
     private static final Pattern JAVAC = Pattern.compile("\\[ERROR\\]\\s+(.+?\\.java):\\[(\\d+),\\d+\\]\\s+(.*)");
+
+    /** Indented javac detail line, e.g. {@code [ERROR]   required: String,String}. Help/URL lines are not indented. */
+    private static final Pattern CONTINUATION = Pattern.compile("\\[ERROR\\]\\s{2,}\\S.*");
 
     /** Reads every TEST-*.xml under the workspace's target/surefire-reports. */
     public static TestSummary parseReports(Path workspace) {
@@ -111,12 +116,32 @@ public final class SurefireParser {
     }
 
     public static List<CompileError> parseCompileErrors(String mavenOutput) {
-        List<CompileError> out = new ArrayList<>();
-        for (String line : mavenOutput.split("\\R")) {
+        // Maven prints each error twice (COMPILATION ERROR block + failure summary); javac's detail lines
+        // (required/found/reason/symbol/location) follow as indented [ERROR] lines and are what the fixer needs.
+        Map<String, CompileError> out = new LinkedHashMap<>();
+        String file = null, head = null;
+        int lineNo = 0;
+        List<String> detail = new ArrayList<>();
+        for (String line : (mavenOutput + "\n[ERROR] end").split("\\R")) {
             Matcher m = JAVAC.matcher(line);
-            if (m.find()) out.add(new CompileError(m.group(1), Integer.parseInt(m.group(2)), m.group(3).trim()));
+            boolean continuation = file != null && CONTINUATION.matcher(line).matches();
+            if (continuation) {
+                detail.add(line.replaceFirst("^\\[ERROR\\]\\s+", "").stripTrailing());
+                continue;
+            }
+            if (file != null) {
+                String message = detail.isEmpty() ? head : head + "\n    " + String.join("\n    ", detail);
+                out.putIfAbsent(file + ":" + lineNo + ":" + message, new CompileError(file, lineNo, message));
+                file = null;
+            }
+            if (m.find()) {
+                file = m.group(1);
+                lineNo = Integer.parseInt(m.group(2));
+                head = m.group(3).trim();
+                detail = new ArrayList<>();
+            }
         }
-        return out;
+        return new ArrayList<>(out.values());
     }
 
     /**

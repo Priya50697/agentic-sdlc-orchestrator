@@ -68,6 +68,20 @@ class GraphAndRulesTest {
     }
 
     @Test
+    void repeatedCodeDefectStopsEarlyInsteadOfBurningTheBudget() {
+        FailureRouter r = new FailureRouter();
+        var main = new FailureInfo(FailureKind.COMPILE_MAIN, "x", "Svc.java:36", "impl:T5");
+        assertThat(r.route("wave:1", main, 1).action()).isEqualTo(Action.ROUTE_BACK);
+        assertThat(r.route("wave:1", main, 2).action()).isEqualTo(Action.ROUTE_BACK);
+        var stop = r.route("wave:1", main, FailureRouter.MAX_SAME_CODE_FAILURE);
+        assertThat(stop.action()).isEqualTo(Action.SAFE_STOP);
+        assertThat(stop.reason()).contains("Svc.java:36").contains("not converging");
+        // assertions keep their own rule (retry once, then route back)
+        var assertion = new FailureInfo(FailureKind.ASSERTION, "x", "AC-1", "impl:T1");
+        assertThat(r.route("testing", assertion, 3).action()).isEqualTo(Action.ROUTE_BACK);
+    }
+
+    @Test
     void invalidatorFindsChangedInputsAndCascadesThroughJoins() {
         RunSnapshot s = new RunSnapshot();
         Node a = Node.stage("a", "x").consumes("art");

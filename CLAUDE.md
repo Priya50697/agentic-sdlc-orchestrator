@@ -11,7 +11,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - [x] P2 engine/ + governance/ + engine tests with FakeLlmClient
 - [x] P3 workspace/ (scaffold, git, maven, sandbox), context/ (CodeIndexer), REST + console
 - [x] P4 7 agents + prompts + schemas; dry-run greenfield
-- [ ] P5 live Greenfield, export to docs/runs/
+- [x] P5 live Greenfield, export to docs/runs/
 - [ ] P6 Brownfield + Ambiguous
 - [ ] P7 docs 01-04, README, final replay run
 

@@ -10,7 +10,13 @@ public record CodeIndex(List<ClassInfo> classes) {
 
     /** {@code parsed=false} means the regex fallback produced this entry (partial: no method bodies, maybe no endpoints). */
     public record ClassInfo(String file, String packageName, String name, String kind, List<String> annotations,
-                            List<String> methods, List<Endpoint> endpoints, boolean parsed) {
+                            List<String> methods, List<Endpoint> endpoints, boolean parsed,
+                            List<String> constructors) {
+        public ClassInfo(String file, String packageName, String name, String kind, List<String> annotations,
+                         List<String> methods, List<Endpoint> endpoints, boolean parsed) {
+            this(file, packageName, name, kind, annotations, methods, endpoints, parsed, List.of());
+        }
+
         public String qualifiedName() {
             return packageName == null || packageName.isEmpty() ? name : packageName + "." + name;
         }
@@ -52,6 +58,7 @@ public record CodeIndex(List<ClassInfo> classes) {
         b.append(c.kind()).append(' ').append(c.qualifiedName());
         if (!c.parsed()) b.append("  [regex fallback]");
         b.append('\n');
+        for (String k : c.constructors()) b.append("  constructor ").append(k).append('\n');
         for (String m : c.methods()) b.append("  ").append(m).append('\n');
         for (Endpoint e : c.endpoints()) {
             b.append("  endpoint ").append(e.verb()).append(' ').append(e.path()).append(" -> ").append(e.method()).append('\n');

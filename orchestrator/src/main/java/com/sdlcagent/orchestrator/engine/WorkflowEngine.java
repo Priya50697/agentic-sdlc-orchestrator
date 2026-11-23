@@ -449,7 +449,13 @@ public class WorkflowEngine {
                 "attempt", n.attempts, "kind", f.kind().name(), "message", f.message(), "signature", f.signature()));
         String sig = f.signature() == null ? f.kind().name() : f.signature();
         int seen = s.failureSignatures.merge(n.id + "|" + sig, 1, Integer::sum);
-        FailureRouter.Decision d = cfg.router.route(n.id, f, seen > 1);
+        FailureRouter.Decision d = cfg.router.route(n.id, f, seen);
+        if (seen > 1) {
+            f = new FailureInfo(f.kind(), f.message() + "\n\nNOTE: this exact error has occurred " + seen
+                    + " times; your previous fix did not work. Do not repeat it. Check the EXISTING CODE index for the"
+                    + " real constructor/method signatures of the classes you call and use only those.",
+                    f.signature(), f.ownerNodeId());
+        }
 
         switch (d.action()) {
             case SAFE_STOP -> exhaust(n, d.reason());

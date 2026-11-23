@@ -7,6 +7,7 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -97,7 +99,23 @@ public class CodeIndexer {
                 endpoints.add(new Endpoint(verb, join(base, pathOf(a)), m.getNameAsString()));
             }
         }
-        return new ClassInfo(file, pkg, t.getNameAsString(), kind(t), annotations, methods, endpoints, true);
+        return new ClassInfo(file, pkg, t.getNameAsString(), kind(t), annotations, methods, endpoints, true,
+                constructors(t));
+    }
+
+    /** Non-private constructors (what callers may invoke); records without an explicit one get the canonical form. */
+    private static List<String> constructors(TypeDeclaration<?> t) {
+        List<String> out = new ArrayList<>();
+        for (ConstructorDeclaration c : t.getConstructors()) {
+            if (c.hasModifier(Modifier.Keyword.PRIVATE)) continue;
+            out.add(c.getDeclarationAsString(true, false, true));
+        }
+        if (t.isRecordDeclaration()) {
+            String canonical = t.getNameAsString() + "(" + t.asRecordDeclaration().getParameters().stream()
+                    .map(p -> p.getTypeAsString() + " " + p.getNameAsString()).collect(Collectors.joining(", ")) + ")";
+            out.add(canonical);
+        }
+        return out;
     }
 
     private static String kind(TypeDeclaration<?> t) {

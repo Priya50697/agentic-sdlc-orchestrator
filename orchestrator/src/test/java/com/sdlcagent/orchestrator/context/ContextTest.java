@@ -61,6 +61,28 @@ class ContextTest {
     }
 
     @Test
+    void indexesNonPrivateConstructorsAndRecordComponents() throws IOException {
+        write("src/main/java/com/sdlcagent/urlshortener/dao/ShortUrl.java", """
+                package com.sdlcagent.urlshortener.dao;
+                public class ShortUrl {
+                    protected ShortUrl() { }
+                    public ShortUrl(String code, String originalUrl) { }
+                    private ShortUrl(int secret) { }
+                }
+                """);
+        write("src/main/java/com/sdlcagent/urlshortener/dto/Req.java",
+                "package com.sdlcagent.urlshortener.dto;\npublic record Req(String url, int ttl) { }\n");
+        CodeIndex idx = new CodeIndexer().index(ws);
+        ClassInfo entity = idx.classes().stream().filter(c -> c.name().equals("ShortUrl")).findFirst().orElseThrow();
+        assertThat(entity.constructors()).hasSize(2)
+                .anyMatch(k -> k.contains("ShortUrl(String code, String originalUrl)"))
+                .noneMatch(k -> k.contains("secret"));
+        ClassInfo rec = idx.classes().stream().filter(c -> c.name().equals("Req")).findFirst().orElseThrow();
+        assertThat(rec.constructors()).contains("Req(String url, int ttl)");
+        assertThat(idx.summary(10_000)).contains("constructor public ShortUrl(String code, String originalUrl)");
+    }
+
+    @Test
     void brokenSourceFallsBackToRegex() throws IOException {
         write("src/main/java/com/sdlcagent/urlshortener/Broken.java",
                 "package com.sdlcagent.urlshortener;\n@Service\npublic class Broken {\n  void x( {\n");

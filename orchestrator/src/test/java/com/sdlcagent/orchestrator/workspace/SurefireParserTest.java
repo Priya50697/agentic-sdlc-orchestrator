@@ -66,6 +66,27 @@ class SurefireParserTest {
     }
 
     @Test
+    void keepsJavacDetailLinesAndDropsDuplicates() {
+        String block = "[ERROR] /w/src/main/java/a/Svc.java:[36,25] constructor ShortUrl in class a.ShortUrl cannot be applied to given types;\n"
+                + "[ERROR]   required: java.lang.String,java.lang.String\n"
+                + "[ERROR]   found:    java.lang.String,java.lang.String,java.time.Instant\n"
+                + "[ERROR]   reason: actual and formal argument lists differ in length\n";
+        String out = "[ERROR] COMPILATION ERROR :\n" + block + "[INFO] 1 error\n"
+                + "[ERROR] Failed to execute goal compiler:compile: Compilation failure\n" + block
+                + "[ERROR] -> [Help 1]\n";
+        var errors = SurefireParser.parseCompileErrors(out);
+        assertThat(errors).hasSize(1);
+        assertThat(errors.get(0).line()).isEqualTo(36);
+        assertThat(errors.get(0).message())
+                .contains("cannot be applied to given types;")
+                .contains("required: java.lang.String,java.lang.String")
+                .contains("found:    java.lang.String,java.lang.String,java.time.Instant")
+                .doesNotContain("Help 1");
+        FailureInfo f = SurefireParser.classify(run(1, out), SurefireParser.parseReports(ws), PKG, SurefireParserTest::owner);
+        assertThat(f.message()).contains("required: java.lang.String,java.lang.String");
+    }
+
+    @Test
     void classifiesAssertionAndMainException() throws IOException {
         report("LinkTest",
                 "<testcase classname=\"com.sdlcagent.urlshortener.LinkTest\" name=\"a\"><failure message=\"m\" type=\"org.opentest4j.AssertionFailedError\">x</failure></testcase>");
