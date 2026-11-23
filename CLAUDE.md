@@ -20,7 +20,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - Live CLI smoke test (costs ~$0.0002): set `CLAUDE_CLI_LIVE=1`, run `.\mvnw.cmd test`
 - Scaffold build check (needs Maven repo access): set `SCAFFOLD_LIVE=1`, run `.\mvnw.cmd test -Dtest=ScaffoldBuildLiveTest`
 - Fixture build check (real Maven on the dry-run fixtures): `SCAFFOLD_LIVE=1`, `.\mvnw.cmd test -Dtest=FixtureBuildLiveTest`
-- Console run (greenfield needs the scenario even with a file): `.\mvnw.cmd spring-boot:run -Dspring-boot.run.arguments="--orchestrator.cli.scenario=greenfield [--orchestrator.cli.requirement-file=../docs/runs/minimal-requirement.md] --spring.main.web-application-type=none"`
+- Console run (greenfield needs the scenario even with a file): `.\mvnw.cmd spring-boot:run -Dspring-boot.run.arguments="--orchestrator.cli.scenario=greenfield [--orchestrator.cli.requirement-file=../docs/runs/greenfield/requirement-input.md] --spring.main.web-application-type=none"`
 - Anthropic API profile: `-Dspring.profiles.active=anthropic` + env `ANTHROPIC_API_KEY`
 - Regenerate wrapper (only if lost): IntelliJ's `plugins/maven-plugin/lib/maven3/bin/mvn.cmd wrapper:wrapper -Dmaven=3.9.9`
 

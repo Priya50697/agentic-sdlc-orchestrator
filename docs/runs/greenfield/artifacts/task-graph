@@ -1,0 +1,51 @@
+{
+  "tasks" : [ {
+    "id" : "T1",
+    "description" : "Create DTO records: ShortenRequest (url with @NotBlank and @ValidUrl), ShortenResponse (code), ErrorResponse (status, error, message).",
+    "dependsOn" : [ "T2" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/dto/ShortenRequest.java", "src/main/java/com/sdlcagent/urlshortener/dto/ShortenResponse.java", "src/main/java/com/sdlcagent/urlshortener/dto/ErrorResponse.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-5" ]
+  }, {
+    "id" : "T2",
+    "description" : "Create the @ValidUrl constraint annotation and HttpUrlValidator accepting only absolute http/https URLs with non-empty host.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/validator/ValidUrl.java", "src/main/java/com/sdlcagent/urlshortener/validator/HttpUrlValidator.java" ],
+    "acceptanceCriteria" : [ "AC-5" ]
+  }, {
+    "id" : "T3",
+    "description" : "Create JPA entity UrlMapping (unique code column) and UrlMappingRepository with findByCode/existsByCode.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/dao/UrlMapping.java", "src/main/java/com/sdlcagent/urlshortener/dao/UrlMappingRepository.java" ],
+    "acceptanceCriteria" : [ "AC-2", "AC-6" ]
+  }, {
+    "id" : "T4",
+    "description" : "Create CodeGenerator util producing 7-char base62 codes with SecureRandom.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/util/CodeGenerator.java" ],
+    "acceptanceCriteria" : [ "AC-1" ]
+  }, {
+    "id" : "T5",
+    "description" : "Create UrlShortenerService with shorten (collision-safe regeneration, bounded retries, persists code+URL, no analytics fields) and resolve; create CodeNotFoundException.",
+    "dependsOn" : [ "T3", "T4" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/service/UrlShortenerService.java", "src/main/java/com/sdlcagent/urlshortener/service/CodeNotFoundException.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-2", "AC-3", "AC-4", "AC-6" ]
+  }, {
+    "id" : "T6",
+    "description" : "Create UrlShortenerController with POST /shorten (201, @Valid) and GET /{code} (302 + Location), no auth.",
+    "dependsOn" : [ "T1", "T5" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/controller/UrlShortenerController.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-3", "AC-4", "AC-5", "AC-6" ]
+  }, {
+    "id" : "T7",
+    "description" : "Create GlobalExceptionHandler returning consistent ErrorResponse JSON: 400 for validation/unreadable body, 404 for CodeNotFoundException, 500 generic without stack traces.",
+    "dependsOn" : [ "T1", "T5" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/controller/GlobalExceptionHandler.java" ],
+    "acceptanceCriteria" : [ "AC-4", "AC-5" ]
+  }, {
+    "id" : "T8",
+    "description" : "Modify application.yml: file-based H2 datasource (jdbc:h2:file:./data/urlshortener), JPA ddl-auto update, show-sql off, server.error.include-stacktrace never.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/resources/application.yml" ],
+    "acceptanceCriteria" : [ "AC-2" ]
+  } ]
+}

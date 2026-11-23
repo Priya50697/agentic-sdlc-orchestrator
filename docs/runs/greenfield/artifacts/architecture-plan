@@ -1,0 +1,75 @@
+{
+  "overview" : "Minimal URL shortener. POST /shorten validates the URL (absolute http/https with host), generates a unique 7-char base62 code, persists it in a file-based H2 table via Spring Data JPA (unique constraint on code, regeneration on collision) and returns 201 {\"code\":...}. GET /{code} looks up the mapping and returns 302 with Location header, or 404 if unknown. A global @RestControllerAdvice returns consistent JSON errors (400 for validation, 404 for unknown code, 500 generic) without stack traces. No auth, no analytics, no external providers, so no provider layer is needed.",
+  "components" : [ {
+    "name" : "ShortenRequest",
+    "layer" : "dto",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dto/ShortenRequest.java",
+    "responsibility" : "Record with field 'url' annotated @NotBlank and @ValidUrl (custom validator)."
+  }, {
+    "name" : "ShortenResponse",
+    "layer" : "dto",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dto/ShortenResponse.java",
+    "responsibility" : "Record with field 'code' returned by POST /shorten."
+  }, {
+    "name" : "ErrorResponse",
+    "layer" : "dto",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dto/ErrorResponse.java",
+    "responsibility" : "Record (status:int, error:String, message:String) used as consistent JSON error body."
+  }, {
+    "name" : "ValidUrl",
+    "layer" : "validator",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/validator/ValidUrl.java",
+    "responsibility" : "Bean Validation constraint annotation bound to HttpUrlValidator."
+  }, {
+    "name" : "HttpUrlValidator",
+    "layer" : "validator",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/validator/HttpUrlValidator.java",
+    "responsibility" : "ConstraintValidator<ValidUrl,String>: accepts only parseable absolute URIs with scheme http/https (case-insensitive) and a non-empty host; null/blank treated invalid."
+  }, {
+    "name" : "CodeGenerator",
+    "layer" : "util",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/util/CodeGenerator.java",
+    "responsibility" : "Spring component producing 7-char base62 random codes using SecureRandom."
+  }, {
+    "name" : "UrlMapping",
+    "layer" : "dao",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dao/UrlMapping.java",
+    "responsibility" : "JPA entity for the mapping with unique constraint on code."
+  }, {
+    "name" : "UrlMappingRepository",
+    "layer" : "dao",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dao/UrlMappingRepository.java",
+    "responsibility" : "JpaRepository<UrlMapping, Long> with findByCode(String) and existsByCode(String)."
+  }, {
+    "name" : "UrlShortenerService",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/UrlShortenerService.java",
+    "responsibility" : "shorten(url): generate code, retry on collision (existsByCode check plus DataIntegrityViolationException catch, bounded attempts), save and return code. resolve(code): return original URL or throw CodeNotFoundException."
+  }, {
+    "name" : "CodeNotFoundException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/CodeNotFoundException.java",
+    "responsibility" : "Runtime exception thrown when a code is unknown."
+  }, {
+    "name" : "UrlShortenerController",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/UrlShortenerController.java",
+    "responsibility" : "POST /shorten (@Valid body, 201) and GET /{code} (302 with Location header)."
+  }, {
+    "name" : "GlobalExceptionHandler",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/GlobalExceptionHandler.java",
+    "responsibility" : "@RestControllerAdvice mapping MethodArgumentNotValidException and HttpMessageNotReadableException to 400, CodeNotFoundException to 404, other exceptions to generic 500, all as ErrorResponse JSON."
+  } ],
+  "endpoints" : [ {
+    "verb" : "POST",
+    "path" : "/shorten",
+    "description" : "Body {\"url\":\"...\"}; 201 with {\"code\":\"...\"}; 400 on missing/blank/malformed/non-http(s) URL."
+  }, {
+    "verb" : "GET",
+    "path" : "/{code}",
+    "description" : "302 with Location header set to original URL; 404 JSON error if code unknown."
+  } ],
+  "dataModel" : [ "UrlMapping(id:Long @Id @GeneratedValue, code:String length 16 not null UNIQUE, originalUrl:String length 2048 not null) mapped to table url_mapping" ],
+  "tasks" : [ ]
+}

@@ -1,0 +1,66 @@
+{
+  "title" : "Minimal URL Shortener Service",
+  "summary" : "A Spring Boot service that exposes POST /shorten to turn a long URL into a short code and GET /{code} to redirect to the original URL. Invalid URLs are rejected and unknown codes return 404. Mappings are stored in H2. There is no analytics, no authentication and no external provider.",
+  "stories" : [ {
+    "id" : "S1",
+    "text" : "As an API client, I want to submit a long URL and receive a short code, so that I can share a compact link."
+  }, {
+    "id" : "S2",
+    "text" : "As a link visitor, I want GET /{code} to redirect me to the original URL, so that I reach the intended destination."
+  }, {
+    "id" : "S3",
+    "text" : "As an API client, I want invalid URLs rejected with a clear error, so that only valid URLs are stored."
+  } ],
+  "acceptanceCriteria" : [ {
+    "id" : "AC-1",
+    "storyId" : "S1",
+    "text" : "POST /shorten with a JSON body {\"url\": \"<valid http/https URL>\"} returns a success response (201) whose JSON body contains a non-empty string field \"code\"."
+  }, {
+    "id" : "AC-2",
+    "storyId" : "S1",
+    "text" : "The code returned by POST /shorten is persisted in H2 together with the original URL, so a later GET /{code} resolves it."
+  }, {
+    "id" : "AC-3",
+    "storyId" : "S2",
+    "text" : "GET /{code} for a known code returns HTTP 302 with a Location header equal to the original URL."
+  }, {
+    "id" : "AC-4",
+    "storyId" : "S2",
+    "text" : "GET /{code} for an unknown code returns HTTP 404."
+  }, {
+    "id" : "AC-5",
+    "storyId" : "S3",
+    "text" : "POST /shorten with a missing, blank or malformed URL, or one whose scheme is not http or https, returns HTTP 400 and nothing is persisted."
+  }, {
+    "id" : "AC-6",
+    "storyId" : "S1",
+    "text" : "POST /shorten and GET /{code} work without any credentials, and no analytics data (such as visit counts) is stored or exposed."
+  } ],
+  "ambiguities" : [ {
+    "id" : "AMB-1",
+    "question" : "What are the request and response field names and the success status for POST /shorten?",
+    "severity" : "MINOR",
+    "proposedDefault" : "Request field \"url\", response field \"code\", success status 201 Created."
+  }, {
+    "id" : "AMB-2",
+    "question" : "Should submitting the same long URL twice return the same code or a new code each time?",
+    "severity" : "MINOR",
+    "proposedDefault" : "Return a new unique code on every request; no deduplication."
+  }, {
+    "id" : "AMB-3",
+    "question" : "What format and length should the short code have?",
+    "severity" : "MINOR",
+    "proposedDefault" : "7-character alphanumeric (base62) random code, unique across stored mappings."
+  }, {
+    "id" : "AMB-4",
+    "question" : "Which URL schemes count as valid?",
+    "severity" : "MINOR",
+    "proposedDefault" : "Only absolute http and https URLs with a non-empty host are valid."
+  }, {
+    "id" : "AMB-5",
+    "question" : "Should H2 run in-memory or file-based, i.e. must data survive a restart?",
+    "severity" : "MINOR",
+    "proposedDefault" : "File-based H2 so mappings survive restarts."
+  } ],
+  "nonFunctional" : [ "Persistence: H2 is the only datastore, accessed via Spring Data JPA or JDBC, with the schema created automatically at startup.", "Security: no authentication or authorization, and no calls to external providers or services.", "Reliability: code uniqueness is enforced by a unique constraint on the code column, and a collision results in regeneration rather than overwriting an existing mapping.", "Error handling: error responses use a consistent JSON body and never expose stack traces.", "Platform: Java 21 and Spring Boot 3." ]
+}

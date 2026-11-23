@@ -1,0 +1,33 @@
+{
+  "verdict" : "READY",
+  "summary" : "A minimal URL shortener service was built with POST /shorten (returns 201 and a code) and GET /{code} (302 redirect, or 404 for unknown codes). Validation rejects blank, missing, non-http(s) and malformed input with 400 responses that carry no stack traces. All 25 tests passed with no failures, errors or skips, and all six acceptance criteria (AC-1 to AC-6) have passing coverage. A README documenting both endpoints, the error body, running and testing was produced. The audit chain is valid with 66 events, no policy violations, no missing stages, and no retries or route-backs. The live endpoint check passed all required probes, but one advisory hardening probe failed: a private/link-local host URL was accepted with 201.",
+  "risks" : [ "The service accepts URLs pointing to private or link-local hosts (the live hardening probe returned 201 instead of 400). This could be abused to create short links to internal addresses, which is an SSRF-adjacent or phishing concern if redirects are followed by internal clients.", "The audit outcome is still reported as IN_PROGRESS, and end-to-end latency was not recorded, so run metrics are incomplete.", "The documented endpoint is listed as GET /{} in the doc report, which suggests the path variable placeholder may be rendered generically and should be checked in the README." ],
+  "followUps" : [ "Add validation to reject private, loopback and link-local hosts (for example 127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16, 169.254.0.0/16) in the URL validator, with acceptance tests.", "Confirm the README renders the GET /{code} path correctly.", "Finalize the run outcome and latency metrics once approval is recorded." ],
+  "facts" : {
+    "auditChainValid" : true,
+    "auditEvents" : 66,
+    "criticalViolations" : 0,
+    "totalViolations" : 0,
+    "missingStages" : [ ],
+    "metrics" : {
+      "runId" : "run-20261123-063431-d43d",
+      "outcome" : "IN_PROGRESS",
+      "nodesPassed" : 17,
+      "nodesFailed" : 0,
+      "nodeSuccessRate" : 1.0,
+      "retries" : 0,
+      "routeBacks" : 0,
+      "rollbacks" : 0,
+      "invalidations" : 0,
+      "policyViolations" : 0,
+      "humanApprovals" : 1,
+      "llmCalls" : 13,
+      "inputTokens" : 63065,
+      "outputTokens" : 28906,
+      "costUsd" : 0.5344898,
+      "failuresRecovered" : 0,
+      "mttrMillis" : null,
+      "e2eLatencyMillis" : null
+    }
+  }
+}
