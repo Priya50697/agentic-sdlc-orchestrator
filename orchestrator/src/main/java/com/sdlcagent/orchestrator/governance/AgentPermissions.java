@@ -43,6 +43,7 @@ public final class AgentPermissions {
                 "architect", artifactsOnly("architecture-plan", "task-graph"),
                 "implementer", new Permission(List.of("src/main/**", "pom.xml"), true, Set.of()),
                 "compile-gate", artifactsOnly(),
+                "live-check", artifactsOnly("live-report"),
                 "test-engineer", new Permission(List.of("src/test/**"), false, Set.of("test-report")),
                 "doc-writer", new Permission(List.of("README.md", "docs/**/*.md", "docs/*.md"), false, Set.of("doc-report")),
                 "release-reviewer", artifactsOnly("release-report", "release-report.md")));

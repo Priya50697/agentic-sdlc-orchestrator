@@ -131,3 +131,24 @@ Newest phase last. Each entry: built, deviations from the plan, open issues, nex
 ## Pre-P5 (2026-11-22)
 - Default backend model is now `sonnet` (`application.yml` `orchestrator.llm.model`, and the `LlmProperties` fallback). The `anthropic` profile still says `claude-haiku-5-5` (not used; no API key). Live smoke test (`CLAUDE_CLI_LIVE=1`) now uses `sonnet` and passed: `claude -p` is logged in and the alias resolves.
 - P5 uses `claude -p` (subscription), not the Anthropic API. Run with cache-mode `record`.
+
+## Pre-P5 live trial: minimal requirement (2026-11-22)
+Ran `docs/runs/minimal-requirement.md` live (sonnet, `claude -p`, console, approvals auto-"a"): run `run-20261123-042942-c6a8` ended **SAFE_STOPPED** at `testing` after 2 retries. 17 nodes passed, 1 route-back (wave:2 compile error -> impl:T5, recovered, MTTR ~19 s), 16 LLM calls, $0.87, ~5.5 min. Audit chain and metrics worked.
+- **Cause (strong evidence, not yet fixed):** `tests-valid` says no passing test for AC-1..AC-14. Generated tests use `@DisplayName("AC-n ...")` on methods named `ac1_...`, but real Surefire XML `name` is the method name, so `TestEngineerAgent.buildReport`/`mentions` finds no AC id. FakeMaven (dry run) writes display names into the XML, which hid this. Fix options: make `SurefireParser` also match `acN_` method names, or configure surefire to report display names; add a real-Maven check.
+- Spec had 14 ACs for a 3-sentence requirement (over-specified); consider prompting for fewer, coarser ACs.
+- `url-shortener/` shows as untracked in git; decide whether to ignore it.
+
+### Fixes after the live trial (2026-11-22) — 87 tests green (3 live skipped)
+- **Layout:** mandatory packages `controller/ service/ dao/ provider/ dto/ validator/ util/` (entities + repositories in `dao/`, exceptions in `service/`, @RestControllerAdvice in `controller/`). Encoded in `prompts/architect.md` + `implementer.md` and enforced by `ArchitectureGate` (`LAYERS`, suffix rules, no files in package root). This had never been in the prompts/plan before (old layers were api/repository/model/client/config).
+- **Duplicate entry point/config:** architect prompt says the scaffold owns `Application.java` and `application.yml`; gate rejects root-package Java files and `application.properties`.
+- **AC matching:** `TestEngineerAgent.mentions` accepts `AC-1` (display name) and `ac1_` (method name, which is what Surefire reports); test-engineer prompt requires both.
+- **AC count:** requirements prompt now asks for coarse, few ACs (4-8 for a small service).
+- Dry-run fixtures/tests moved to the new layout. Not yet re-run live. Before the next live run delete `url-shortener/` and `.orchestrator/` (stale workspace and run state).
+
+### Rerun + live-check (2026-11-23) — 92 tests green (3 live skipped)
+- **Rerun result:** `run-20261123-052155-cb45` COMPLETED, release READY: 6 ACs, 21 tests passed, 13 LLM calls, ~$0.58, 1 recovered route-back (wave:1 compile error -> impl:T6), 0 retries. The AC-matching fix works on real Surefire output.
+- **Gotcha:** `--orchestrator.cli.requirement-file=` alone gives scenario `custom`, which is NOT greenfield, so nothing is scaffolded (no `mvnw.cmd`) and wave:0 fails. Always pass `--orchestrator.cli.scenario=greenfield` together with the file. Possible hardening: treat a run as greenfield when the workspace has no `pom.xml`.
+- **Manual live test of the generated app** (curl on port 8099): shorten 201, redirect 302, unknown 404, blank/missing/ftp/javascript/malformed all 400, codes survive a restart. Gap: `http://169.254.169.254/...` is accepted (201); no private/link-local host filtering (not in the spec).
+- **New advisory `live-check` stage** (`agents/livecheck/`): non-LLM, depends on `implementation`, parallel with testing/docs; `release` depends on it and the reviewer sees `live-report`. `ProcessAppRunner` packages with the workspace wrapper, boots the jar on a free port from a temp dir, `LiveProbes` runs 9 HTTP probes (8 required + 1 hardening), process killed afterwards. Never fails the run; boot failure yields `started=false`. `LiveAppRunner` is the seam (dry run injects a failing runner). Not yet exercised against a real generated app inside a run.
+- **To revisit:** make it blocking (return a failure from `LiveCheckExecutor` + give the stage an exit gate) once it is stable across live runs. Also known: release report shows run outcome IN_PROGRESS (report is built before the run closes) and the doc extractor names the redirect endpoint `GET /{}`.
+- **Next (P5):** delete nothing needed (workspace and `.orchestrator/` were cleared). Run live greenfield with `scenario=greenfield`, then export to `docs/runs/`.

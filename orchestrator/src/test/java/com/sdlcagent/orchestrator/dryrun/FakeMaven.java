@@ -37,7 +37,7 @@ class FakeMaven extends MavenRunner {
     @Override
     public Result compile() {
         if (compileCalls.incrementAndGet() == 2) {
-            String file = ws.resolve("src/main/java/com/sdlcagent/urlshortener/model/ShortUrl.java").toString().replace('\\', '/');
+            String file = ws.resolve("src/main/java/com/sdlcagent/urlshortener/dao/ShortUrl.java").toString().replace('\\', '/');
             return new Result(1, false, "[ERROR] " + file + ":[12,5] cannot find symbol: class Instantq", 5);
         }
         return new Result(0, false, "BUILD SUCCESS", 5);

@@ -43,15 +43,15 @@ final class GreenfieldFixtures {
         if (!m.find()) throw new IllegalStateException("no task id in implementer prompt");
         return switch (m.group(1)) {
             case "T1" -> files("entity and repository", Map.of(
-                    PKG + "model/ShortUrl.java", SHORT_URL,
-                    PKG + "repository/ShortUrlRepository.java", REPOSITORY));
+                    PKG + "dao/ShortUrl.java", SHORT_URL,
+                    PKG + "dao/ShortUrlRepository.java", REPOSITORY));
             case "T2" -> files("safety provider", Map.of(
-                    PKG + "client/UrlSafetyProvider.java", PROVIDER,
-                    PKG + "client/StubUrlSafetyProvider.java", STUB));
+                    PKG + "provider/UrlSafetyProvider.java", PROVIDER,
+                    PKG + "provider/StubUrlSafetyProvider.java", STUB));
             case "T3" -> t3Calls.incrementAndGet() == 1
                     ? files("service", Map.of(PKG + "service/LinkHelper.java", "package com.sdlcagent.urlshortener.service; class LinkHelper {}"))
                     : files("service", Map.of(PKG + "service/LinkService.java", SERVICE));
-            case "T4" -> files("controller", Map.of(PKG + "api/LinkController.java", CONTROLLER));
+            case "T4" -> files("controller", Map.of(PKG + "controller/LinkController.java", CONTROLLER));
             default -> throw new IllegalStateException("unknown task " + m.group(1));
         };
     }
@@ -77,18 +77,18 @@ final class GreenfieldFixtures {
     private static Map<String, Object> plan() {
         return Map.of("overview", "Layered Spring Boot service",
                 "components", List.of(
-                        Map.of("name", "ShortUrl", "layer", "model", "path", PKG + "model/ShortUrl.java", "responsibility", "entity"),
-                        Map.of("name", "LinkController", "layer", "api", "path", PKG + "api/LinkController.java", "responsibility", "HTTP")),
+                        Map.of("name", "ShortUrl", "layer", "dao", "path", PKG + "dao/ShortUrl.java", "responsibility", "entity"),
+                        Map.of("name", "LinkController", "layer", "controller", "path", PKG + "controller/LinkController.java", "responsibility", "HTTP")),
                 "endpoints", List.of(
                         Map.of("verb", "POST", "path", "/api/urls", "description", "create"),
                         Map.of("verb", "GET", "path", "/{code}", "description", "redirect"),
                         Map.of("verb", "GET", "path", "/api/urls/{code}/stats", "description", "stats")),
                 "dataModel", List.of("ShortUrl(id, code, longUrl, createdAt, clicks)"),
                 "tasks", List.of(
-                        task("T1", List.of(), List.of("model/ShortUrl.java", "repository/ShortUrlRepository.java"), "AC-3"),
-                        task("T2", List.of(), List.of("client/UrlSafetyProvider.java", "client/StubUrlSafetyProvider.java"), "AC-4"),
+                        task("T1", List.of(), List.of("dao/ShortUrl.java", "dao/ShortUrlRepository.java"), "AC-3"),
+                        task("T2", List.of(), List.of("provider/UrlSafetyProvider.java", "provider/StubUrlSafetyProvider.java"), "AC-4"),
                         task("T3", List.of("T1", "T2"), List.of("service/LinkService.java"), "AC-1", "AC-2"),
-                        task("T4", List.of("T3"), List.of("api/LinkController.java"), "AC-1", "AC-2", "AC-3", "AC-4")));
+                        task("T4", List.of("T3"), List.of("controller/LinkController.java"), "AC-1", "AC-2", "AC-3", "AC-4")));
     }
 
     private static Map<String, Object> task(String id, List<String> deps, List<String> paths, String... acs) {
@@ -127,7 +127,7 @@ final class GreenfieldFixtures {
     // ---- generated sources (kept compilable so SCAFFOLD_LIVE-style runs can reuse them)
 
     static final String SHORT_URL = """
-            package com.sdlcagent.urlshortener.model;
+            package com.sdlcagent.urlshortener.dao;
 
             import jakarta.persistence.Column;
             import jakarta.persistence.Entity;
@@ -164,9 +164,9 @@ final class GreenfieldFixtures {
             """;
 
     static final String REPOSITORY = """
-            package com.sdlcagent.urlshortener.repository;
+            package com.sdlcagent.urlshortener.dao;
 
-            import com.sdlcagent.urlshortener.model.ShortUrl;
+            import com.sdlcagent.urlshortener.dao.ShortUrl;
             import java.util.Optional;
             import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -176,7 +176,7 @@ final class GreenfieldFixtures {
             """;
 
     static final String PROVIDER = """
-            package com.sdlcagent.urlshortener.client;
+            package com.sdlcagent.urlshortener.provider;
 
             public interface UrlSafetyProvider {
                 boolean isSafe(String url);
@@ -184,7 +184,7 @@ final class GreenfieldFixtures {
             """;
 
     static final String STUB = """
-            package com.sdlcagent.urlshortener.client;
+            package com.sdlcagent.urlshortener.provider;
 
             import org.springframework.stereotype.Component;
 
@@ -201,9 +201,9 @@ final class GreenfieldFixtures {
     static final String SERVICE = """
             package com.sdlcagent.urlshortener.service;
 
-            import com.sdlcagent.urlshortener.client.UrlSafetyProvider;
-            import com.sdlcagent.urlshortener.model.ShortUrl;
-            import com.sdlcagent.urlshortener.repository.ShortUrlRepository;
+            import com.sdlcagent.urlshortener.provider.UrlSafetyProvider;
+            import com.sdlcagent.urlshortener.dao.ShortUrl;
+            import com.sdlcagent.urlshortener.dao.ShortUrlRepository;
             import java.net.URI;
             import java.security.SecureRandom;
             import java.util.Optional;
@@ -262,9 +262,9 @@ final class GreenfieldFixtures {
             """;
 
     static final String CONTROLLER = """
-            package com.sdlcagent.urlshortener.api;
+            package com.sdlcagent.urlshortener.controller;
 
-            import com.sdlcagent.urlshortener.model.ShortUrl;
+            import com.sdlcagent.urlshortener.dao.ShortUrl;
             import com.sdlcagent.urlshortener.service.LinkService;
             import jakarta.validation.Valid;
             import jakarta.validation.constraints.NotBlank;

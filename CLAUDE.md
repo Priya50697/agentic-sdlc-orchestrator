@@ -20,7 +20,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - Live CLI smoke test (costs ~$0.0002): set `CLAUDE_CLI_LIVE=1`, run `.\mvnw.cmd test`
 - Scaffold build check (needs Maven repo access): set `SCAFFOLD_LIVE=1`, run `.\mvnw.cmd test -Dtest=ScaffoldBuildLiveTest`
 - Fixture build check (real Maven on the dry-run fixtures): `SCAFFOLD_LIVE=1`, `.\mvnw.cmd test -Dtest=FixtureBuildLiveTest`
-- Console run: `.\mvnw.cmd spring-boot:run -Dspring-boot.run.arguments="--orchestrator.cli.scenario=greenfield --spring.main.web-application-type=none"`
+- Console run (greenfield needs the scenario even with a file): `.mvnw.cmd spring-boot:run -Dspring-boot.run.arguments="--orchestrator.cli.scenario=greenfield [--orchestrator.cli.requirement-file=..docsunsx.md] --spring.main.web-application-type=none"`
 - Anthropic API profile: `-Dspring.profiles.active=anthropic` + env `ANTHROPIC_API_KEY`
 - Regenerate wrapper (only if lost): IntelliJ's `plugins/maven-plugin/lib/maven3/bin/mvn.cmd wrapper:wrapper -Dmaven=3.9.9`
 
@@ -34,6 +34,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - `context/` CodeIndexer -> CodeIndex, ContextAssembler (char budget)
 - `service/` RunService (facade for REST+console), EngineConfigCustomizer (P4 registers agents/gates/expanders as beans of this type)
 - `api/` RunController, ApprovalController; `cli/` ConsoleRunner/ConsoleSession/Scenarios
+- `agents/livecheck/` advisory live-check stage (LiveAppRunner seam, ProcessAppRunner, LiveProbes) between implementation and release
 - `agents/` base/ (SdlcAgent, AbstractLlmAgent, AgentRegistrar, PromptLoader) + one package per agent with its gate(s); prompts in `resources/prompts/`; per-agent write scope in `governance/AgentPermissions`
 
 ## Core contracts

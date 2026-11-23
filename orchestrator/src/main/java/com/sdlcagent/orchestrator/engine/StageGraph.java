@@ -14,6 +14,7 @@ public final class StageGraph {
     public static final String TASK_GRAPH = "task-graph";
     public static final String TEST_REPORT = "test-report";
     public static final String DOC_REPORT = "doc-report";
+    public static final String LIVE_REPORT = "live-report";
     public static final String RELEASE_REPORT = "release-report";
 
     public static final String TASK_GRAPH_EXPANDER = "task-graph";
@@ -37,8 +38,9 @@ public final class StageGraph {
                 .consumes(SPEC, PLAN).exit("tests-valid");
         Node docs = Node.stage("docs", "doc-writer").dependsOn("implementation")
                 .consumes(SPEC, PLAN).exit("docs-valid");
-        Node release = Node.stage("release", "release-reviewer").dependsOn("testing", "docs")
-                .consumes(TEST_REPORT, DOC_REPORT).exit("release-valid").approval(ApprovalKind.GATE_2);
-        return List.of(requirements, analysis, architecture, implementation, testing, docs, release);
+        Node live = Node.stage("live-check", "live-check").dependsOn("implementation");
+        Node release = Node.stage("release", "release-reviewer").dependsOn("testing", "docs", "live-check")
+                .consumes(TEST_REPORT, DOC_REPORT, LIVE_REPORT).exit("release-valid").approval(ApprovalKind.GATE_2);
+        return List.of(requirements, analysis, architecture, implementation, testing, docs, live, release);
     }
 }

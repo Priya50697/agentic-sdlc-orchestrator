@@ -121,8 +121,11 @@ public class TestEngineerAgent extends AbstractLlmAgent<TestSuite> {
     }
 
     /** "AC-1" must not match "AC-10". */
-    static boolean mentions(String text, String acId) {
-        return text != null && java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(acId) + "(?!\\d)")
+    public static boolean mentions(String text, String acId) {
+        if (text == null) return false;
+        String num = acId.replaceFirst("(?i)^AC[-_]?", "");
+        // Surefire reports the method name (ac1_foo), not @DisplayName, so accept both "AC-1" and "ac1_".
+        return java.util.regex.Pattern.compile("(?i)(?<![A-Za-z0-9])AC[-_]?" + java.util.regex.Pattern.quote(num) + "(?!\\d)")
                 .matcher(text).find();
     }
 }

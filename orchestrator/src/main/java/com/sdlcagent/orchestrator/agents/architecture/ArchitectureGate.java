@@ -88,19 +88,42 @@ public class ArchitectureGate implements GateBean {
         } else if (java && !p.startsWith("src/main/java/" + pkgPath + "/")) {
             errors.add("task " + taskId + " path is outside the project package " + pkgPath + ": " + p);
         }
-        if (java) {
-            String file = p.substring(p.lastIndexOf('/') + 1);
-            String dir = p.substring(0, p.lastIndexOf('/'));
-            if (file.endsWith("Controller.java") && !dir.matches(".*/(api|web|controller)(/.*)?")) {
-                errors.add("layer rule: controller must live in an api/web/controller package: " + p);
+        if (p.equals("src/main/resources/application.properties")) {
+            errors.add("task " + taskId + ": the scaffold uses application.yml; modify it instead of creating " + p);
+        }
+        if (java && p.startsWith("src/main/java/" + pkgPath + "/")) {
+            String rest = p.substring(("src/main/java/" + pkgPath + "/").length());
+            int slash = rest.indexOf('/');
+            String file = rest.substring(rest.lastIndexOf('/') + 1);
+            if (slash < 0) {
+                errors.add("layer rule: " + p + " sits in the package root; the scaffold already provides Application.java"
+                        + ", put new classes in one of " + LAYERS);
+                return errors;
             }
-            if (file.endsWith("Repository.java") && !dir.matches(".*/(repository|persistence|store)(/.*)?")) {
-                errors.add("layer rule: repository must live in a repository/persistence package: " + p);
+            String layer = rest.substring(0, slash);
+            if (!LAYERS.contains(layer)) {
+                errors.add("layer rule: package '" + layer + "' is not allowed (" + p + "); use one of " + LAYERS);
             }
-            if (file.endsWith("Service.java") && dir.matches(".*/(api|web|controller|repository)(/.*)?")) {
-                errors.add("layer rule: service must not live in the api or repository layer: " + p);
-            }
+            requireLayer(errors, p, file, layer, "controller", "Controller.java", "ControllerAdvice.java", "ExceptionHandler.java");
+            requireLayer(errors, p, file, layer, "dao", "Repository.java");
+            requireLayer(errors, p, file, layer, "service", "Service.java");
+            requireLayer(errors, p, file, layer, "validator", "Validator.java");
+            requireLayer(errors, p, file, layer, "provider", "Provider.java");
+            requireLayer(errors, p, file, layer, "dto", "Request.java", "Response.java", "Dto.java");
         }
         return errors;
+    }
+
+    /** The mandatory layout under the project package (see prompts/architect.md). */
+    static final List<String> LAYERS = List.of("controller", "service", "dao", "provider", "dto", "validator", "util");
+
+    private static void requireLayer(List<String> errors, String path, String file, String layer, String want,
+                                     String... suffixes) {
+        for (String s : suffixes) {
+            if (file.endsWith(s) && !layer.equals(want)) {
+                errors.add("layer rule: *" + s + " must live in the " + want + "/ package: " + path);
+                return;
+            }
+        }
     }
 }

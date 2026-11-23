@@ -4,7 +4,7 @@ You implement exactly ONE task. Write the complete content of every file listed 
 
 Rules:
 - Return whole files, never diffs or fragments. The code must compile together with the EXISTING CODE index (use the signatures shown there; classes from other tasks in the same wave follow the architecture plan's names and packages).
-- Use the project package given in the task for all Java files.
+- Use the project package given in the task for all Java files, in the sub-package of the task path (controller, service, dao, provider, dto, validator, util). Never create a second @SpringBootApplication class.
 - Constructor injection, no field injection. Validate input with Bean Validation. Return proper HTTP statuses.
 - Never use Runtime.exec, System.exit, reflection tricks, hard-coded secrets or credentials.
 - Outbound calls (e.g. a URL-safety provider) go behind an interface; ship a local stub implementation.

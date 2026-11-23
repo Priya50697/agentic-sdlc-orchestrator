@@ -34,6 +34,7 @@ public class ReleaseReviewerAgent extends AbstractLlmAgent<ReleaseReview> {
         return assemble(
                 section("TEST REPORT", input(ctx, StageGraph.TEST_REPORT)),
                 section("DOC REPORT", input(ctx, StageGraph.DOC_REPORT)),
+                section("LIVE ENDPOINT CHECK (advisory)", input(ctx, StageGraph.LIVE_REPORT)),
                 section("AUDIT FACTS (authoritative)", Json.write(facts)));
     }
 

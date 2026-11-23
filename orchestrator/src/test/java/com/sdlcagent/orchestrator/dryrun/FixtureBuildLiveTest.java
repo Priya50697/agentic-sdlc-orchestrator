@@ -28,12 +28,12 @@ class FixtureBuildLiveTest {
         new Scaffolder(ws, new WorkspaceGit(dir.resolve("g.git"), ws)).scaffold();
         String pkg = GreenfieldFixtures.PKG;
         Map<String, String> files = Map.of(
-                pkg + "model/ShortUrl.java", GreenfieldFixtures.SHORT_URL,
-                pkg + "repository/ShortUrlRepository.java", GreenfieldFixtures.REPOSITORY,
-                pkg + "client/UrlSafetyProvider.java", GreenfieldFixtures.PROVIDER,
-                pkg + "client/StubUrlSafetyProvider.java", GreenfieldFixtures.STUB,
+                pkg + "dao/ShortUrl.java", GreenfieldFixtures.SHORT_URL,
+                pkg + "dao/ShortUrlRepository.java", GreenfieldFixtures.REPOSITORY,
+                pkg + "provider/UrlSafetyProvider.java", GreenfieldFixtures.PROVIDER,
+                pkg + "provider/StubUrlSafetyProvider.java", GreenfieldFixtures.STUB,
                 pkg + "service/LinkService.java", GreenfieldFixtures.SERVICE,
-                pkg + "api/LinkController.java", GreenfieldFixtures.CONTROLLER,
+                pkg + "controller/LinkController.java", GreenfieldFixtures.CONTROLLER,
                 "src/test/java/com/sdlcagent/urlshortener/LinkApiTest.java", GreenfieldFixtures.LINK_TEST);
         for (var e : files.entrySet()) {
             Path f = ws.resolve(e.getKey());

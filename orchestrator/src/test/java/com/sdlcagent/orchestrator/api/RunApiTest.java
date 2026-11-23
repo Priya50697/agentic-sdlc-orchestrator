@@ -77,6 +77,7 @@ class RunApiTest {
                 c.executor("compile-gate", ctx -> NodeResult.ok(Map.of()));
                 c.executor("test-engineer", ctx -> NodeResult.ok(Map.of(TEST_REPORT, "tests")));
                 c.executor("doc-writer", ctx -> NodeResult.ok(Map.of(DOC_REPORT, "docs")));
+                c.executor("live-check", ctx -> NodeResult.ok(Map.of("live-report", "{}")));
                 c.executor("release-reviewer", ctx -> NodeResult.ok(Map.of(RELEASE_REPORT, "release")));
                 for (String g : List.of("requirements-valid", "impact-valid", "architecture-valid", "tests-valid",
                         "docs-valid", "release-valid")) {

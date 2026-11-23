@@ -110,6 +110,7 @@ abstract class EngineTestBase {
         c.executor("compile-gate", countOnly());
         c.executor("test-engineer", llmExec(TEST_REPORT));
         c.executor("doc-writer", llmExec(DOC_REPORT));
+        c.executor("live-check", ctx -> NodeResult.ok(Map.of(StageGraph.LIVE_REPORT, "{}")));
         c.executor("release-reviewer", llmExec(RELEASE_REPORT));
         for (String g : List.of("requirements-valid", "impact-valid", "architecture-valid", "tests-valid",
                 "docs-valid", "release-valid")) {

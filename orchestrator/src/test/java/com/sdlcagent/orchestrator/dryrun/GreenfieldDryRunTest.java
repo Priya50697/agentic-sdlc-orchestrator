@@ -2,6 +2,7 @@ package com.sdlcagent.orchestrator.dryrun;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.sdlcagent.orchestrator.agents.livecheck.LiveAppRunner;
 import com.sdlcagent.orchestrator.cli.ConsoleSession;
 import com.sdlcagent.orchestrator.engine.RunState;
 import com.sdlcagent.orchestrator.engine.StageGraph;
@@ -51,6 +52,14 @@ class GreenfieldDryRunTest {
             return new FakeLlmClient(FIXTURES::reply);
         }
 
+        @Bean
+        @Primary
+        LiveAppRunner noLiveApp() {
+            return () -> {
+                throw new IllegalStateException("no live app in dry run");
+            };
+        }
+
         @Bean(name = "mavenRunner")
         MavenRunner fakeMaven(WorkspaceProperties p) {
             return new FakeMaven(p.dir(), new AtomicInteger());
@@ -86,7 +95,7 @@ class GreenfieldDryRunTest {
         List<AuditEvent> audit = runs.audit(runId);
         assertThat(audit).filteredOn(e -> e.type() == AuditEventType.NODE_PASSED).extracting(AuditEvent::nodeId)
                 .contains("requirements", "architecture", "impl:T1", "impl:T2", "impl:T3", "impl:T4",
-                        "wave:0", "wave:1", "wave:2", "implementation", "testing", "docs", "release");
+                        "wave:0", "wave:1", "wave:2", "implementation", "testing", "docs", "live-check", "release");
         assertThat(runs.status(runId).nodes()).filteredOn(n -> n.id().equals("codebase-analysis"))
                 .extracting(RunService.NodeView::state).containsExactly("SKIPPED");
 
@@ -109,8 +118,8 @@ class GreenfieldDryRunTest {
 
         // workspace: generated sources, tests and docs landed through the sandbox
         Path ws = props.dir();
-        for (String f : List.of("model/ShortUrl.java", "repository/ShortUrlRepository.java", "client/UrlSafetyProvider.java",
-                "client/StubUrlSafetyProvider.java", "service/LinkService.java", "api/LinkController.java")) {
+        for (String f : List.of("dao/ShortUrl.java", "dao/ShortUrlRepository.java", "provider/UrlSafetyProvider.java",
+                "provider/StubUrlSafetyProvider.java", "service/LinkService.java", "controller/LinkController.java")) {
             assertThat(ws.resolve(GreenfieldFixtures.PKG + f)).as(f).exists();
         }
         assertThat(ws.resolve(GreenfieldFixtures.PKG + "service/LinkHelper.java")).doesNotExist();

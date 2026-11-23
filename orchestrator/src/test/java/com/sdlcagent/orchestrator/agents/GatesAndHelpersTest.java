@@ -37,7 +37,7 @@ class GatesAndHelpersTest {
 
     private static String graph(String t1Path, String t2Acs) {
         return "{\"tasks\":[{\"id\":\"T1\",\"targetPaths\":[\"" + t1Path + "\"],\"acceptanceCriteria\":[\"AC-1\"]},"
-                + "{\"id\":\"T2\",\"dependsOn\":[\"T1\"],\"targetPaths\":[\"" + PKG + "/api/RedirectController.java\"],"
+                + "{\"id\":\"T2\",\"dependsOn\":[\"T1\"],\"targetPaths\":[\"" + PKG + "/controller/RedirectController.java\"],"
                 + "\"acceptanceCriteria\":" + t2Acs + "}]}";
     }
 
@@ -53,13 +53,33 @@ class GatesAndHelpersTest {
     }
 
     @Test
+    void architectureGateEnforcesMandatoryLayout() {
+        String ok = "[\"AC-2\"]";
+        for (String p : new String[]{"/validator/UrlValidator.java", "/dao/ShortUrl.java", "/dto/ShortenRequest.java", "/util/CodeGenerator.java", "/provider/SafetyProvider.java"}) {
+            assertThat(arch(graph(PKG + p, ok)).status()).as(p).isEqualTo(GateResult.Status.PASS);
+        }
+        assertThat(arch(graph(PKG + "/service/UrlValidator.java", ok)).errors().toString()).contains("validator/");
+        assertThat(arch(graph(PKG + "/UrlShortenerApplication.java", ok)).errors().toString()).contains("package root");
+        assertThat(arch(graph(PKG + "/api/LinkController.java", ok)).errors().toString()).contains("not allowed");
+        assertThat(arch(graph("src/main/resources/application.properties", ok)).errors().toString()).contains("application.yml");
+    }
+
+    @Test
+    void acMatchingAcceptsDisplayNameAndMethodNameButNotPrefixes() {
+        assertThat(com.sdlcagent.orchestrator.agents.testing.TestEngineerAgent.mentions("ac1_returns201", "AC-1")).isTrue();
+        assertThat(com.sdlcagent.orchestrator.agents.testing.TestEngineerAgent.mentions("AC-1 returns 201", "AC-1")).isTrue();
+        assertThat(com.sdlcagent.orchestrator.agents.testing.TestEngineerAgent.mentions("ac10_long", "AC-1")).isFalse();
+        assertThat(com.sdlcagent.orchestrator.agents.testing.TestEngineerAgent.mentions("ac10_long", "AC-10")).isTrue();
+    }
+
+    @Test
     void architectureGateRejectsUncoveredAcUnsafePathsAndLayerViolations() {
         assertThat(arch(graph(PKG + "/service/LinkService.java", "[\"AC-1\"]")).errors().toString())
                 .contains("AC-2 is not covered");
         assertThat(arch(graph("../evil/X.java", "[\"AC-2\"]")).errors().toString()).contains("unsafe path");
         assertThat(arch(graph("src/test/java/com/sdlcagent/urlshortener/T.java", "[\"AC-2\"]")).errors().toString())
                 .contains("only target src/main");
-        assertThat(arch(graph(PKG + "/api/LinkRepository.java", "[\"AC-2\"]")).errors().toString()).contains("layer rule");
+        assertThat(arch(graph(PKG + "/controller/LinkRepository.java", "[\"AC-2\"]")).errors().toString()).contains("layer rule");
         String cyclic = "{\"tasks\":[{\"id\":\"T1\",\"dependsOn\":[\"T2\"]},{\"id\":\"T2\",\"dependsOn\":[\"T1\"]}]}";
         assertThat(arch(cyclic).status()).isEqualTo(GateResult.Status.FAIL);
     }
@@ -76,17 +96,17 @@ class GatesAndHelpersTest {
     void ownerResolverMapsFilesAndTestClassesToTasks() {
         var owner = OwnerResolver.from(graph(PKG + "/service/LinkService.java", "[\"AC-2\"]"));
         assertThat(owner.apply("C:/ws/" + PKG + "/service/LinkService.java")).isEqualTo("impl:T1");
-        assertThat(owner.apply("com.sdlcagent.urlshortener.api.RedirectController")).isEqualTo("impl:T2");
-        assertThat(owner.apply("com.sdlcagent.urlshortener.api.RedirectControllerTest")).isEqualTo("impl:T2");
+        assertThat(owner.apply("com.sdlcagent.urlshortener.controller.RedirectController")).isEqualTo("impl:T2");
+        assertThat(owner.apply("com.sdlcagent.urlshortener.controller.RedirectControllerTest")).isEqualTo("impl:T2");
         assertThat(owner.apply("Unknown")).isNull();
     }
 
     @Test
     void docsAndImpactGatesCompareAgainstTheRealCode(@TempDir Path ws) throws Exception {
-        Path ctl = ws.resolve(PKG + "/api/RedirectController.java");
+        Path ctl = ws.resolve(PKG + "/controller/RedirectController.java");
         Files.createDirectories(ctl.getParent());
         Files.writeString(ctl, """
-                package com.sdlcagent.urlshortener.api;
+                package com.sdlcagent.urlshortener.controller;
                 import org.springframework.web.bind.annotation.*;
                 @RestController
                 public class RedirectController {
@@ -106,7 +126,7 @@ class GatesAndHelpersTest {
 
         var impact = new ImpactGate(new CodeIndexer(), props);
         NodeResult ok = NodeResult.ok(Map.of(StageGraph.IMPACT,
-                "{\"affectedFiles\":[\"" + PKG + "/api/RedirectController.java\"],\"affectedClasses\":[\"RedirectController\"]}"));
+                "{\"affectedFiles\":[\"" + PKG + "/controller/RedirectController.java\"],\"affectedClasses\":[\"RedirectController\"]}"));
         assertThat(impact.evaluate(new GateContext("r", "n", 1, Map.of(), ok)).status()).isEqualTo(GateResult.Status.PASS);
         NodeResult bad = NodeResult.ok(Map.of(StageGraph.IMPACT, "{\"affectedFiles\":[\"src/Ghost.java\"],\"affectedClasses\":[\"Ghost\"]}"));
         assertThat(impact.evaluate(new GateContext("r", "n", 1, Map.of(), bad)).errors().toString()).contains("does not exist");
