@@ -45,7 +45,7 @@ cd orchestrator
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--orchestrator.cli.scenario=ambiguous --spring.main.web-application-type=none"
 ```
 
-The console asks for each approval: `a` to approve, `r <feedback>` to reject with feedback. Brownfield and ambiguous
+The `spring-boot:run` line is a live run (about $1 of `claude -p` usage). The console asks for each approval: `a` to approve, `r <feedback>` to reject with feedback. Brownfield and ambiguous
 build on the existing `url-shortener/`, so do not delete it. Greenfield needs `url-shortener/` and `.orchestrator/`
 removed first. `orchestrator.llm.cache-mode=replay` re-runs a recorded scenario from `.orchestrator/llm-cache` at no
 cost. Full instructions, REST mode and troubleshooting: [docs/design/03-setup-and-execution.md](docs/design/03-setup-and-execution.md).
