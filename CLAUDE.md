@@ -12,7 +12,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - [x] P3 workspace/ (scaffold, git, maven, sandbox), context/ (CodeIndexer), REST + console
 - [x] P4 7 agents + prompts + schemas; dry-run greenfield
 - [x] P5 live Greenfield, export to docs/runs/
-- [ ] P6 Brownfield + Ambiguous (in progress: see progress.md)
+- [x] P6 Brownfield + Ambiguous
 - [ ] P7 docs 01-04, README, final replay run
 
 ## Commands (Windows; no system Maven)
