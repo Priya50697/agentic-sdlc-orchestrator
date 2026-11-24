@@ -19,7 +19,8 @@ public class MetricsService {
             long retries, long routeBacks, long rollbacks, long invalidations,
             long policyViolations, long humanApprovals,
             long llmCalls, long inputTokens, long outputTokens, double costUsd,
-            long failuresRecovered, Double mttrMillis, Long e2eLatencyMillis) {}
+            long failuresRecovered, Double mttrMillis, Long e2eLatencyMillis,
+            long cacheHits) {}
 
     public Summary compute(Path auditFile) {
         try {
@@ -33,7 +34,7 @@ public class MetricsService {
         String runId = events.isEmpty() ? null : events.get(0).runId();
         String outcome = "IN_PROGRESS";
         long passed = 0, failed = 0, retries = 0, routeBacks = 0, rollbacks = 0, invalidations = 0;
-        long violations = 0, approvals = 0, llmCalls = 0, in = 0, out = 0;
+        long violations = 0, approvals = 0, llmCalls = 0, in = 0, out = 0, cacheHits = 0;
         double cost = 0;
         Instant start = null, end = null;
 
@@ -67,6 +68,7 @@ public class MetricsService {
                 case POLICY_VIOLATION -> violations++;
                 case HUMAN_APPROVAL -> approvals++;
                 case AGENT_END -> {
+                    if (Boolean.TRUE.equals(e.data().get("cacheHit"))) cacheHits++;
                     if (e.data().get("llmCalls") instanceof Number n) {
                         // engine-reported count: 0 for non-LLM nodes such as compile gates
                         if (!Boolean.TRUE.equals(e.data().get("cacheHit"))) llmCalls += n.longValue();
@@ -85,7 +87,7 @@ public class MetricsService {
         Double mttr = recovered == 0 ? null : (double) recoveryTotal.toMillis() / recovered;
         Long e2e = (start != null && end != null) ? Duration.between(start, end).toMillis() : null;
         return new Summary(runId, outcome, passed, failed, rate, retries, routeBacks, rollbacks, invalidations,
-                violations, approvals, llmCalls, in, out, cost, recovered, mttr, e2e);
+                violations, approvals, llmCalls, in, out, cost, recovered, mttr, e2e, cacheHits);
     }
 
     private static Number num(Object o) {
