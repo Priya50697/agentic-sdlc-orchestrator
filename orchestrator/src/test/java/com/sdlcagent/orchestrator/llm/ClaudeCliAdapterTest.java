@@ -40,10 +40,11 @@ class ClaudeCliAdapterTest {
     @Test
     void commandDisablesToolsSettingsAndSessions() {
         var adapter = new ClaudeCliAdapter("claude", "haiku", Duration.ofSeconds(5));
-        var cmd = adapter.buildCommand("haiku", "sys");
+        var cmd = adapter.buildCommand("haiku", java.nio.file.Path.of("sys.md"));
         assertThat(cmd).containsSubsequence("--tools", "", "--no-session-persistence", "--setting-sources", "");
         assertThat(cmd).contains("--strict-mcp-config", "--disable-slash-commands");
-        assertThat(cmd).containsSubsequence("--model", "haiku", "--system-prompt", "sys");
+        assertThat(cmd).containsSubsequence("--model", "haiku", "--system-prompt-file");
+        assertThat(cmd).doesNotContain("--system-prompt");
     }
 
     /** Opt-in live smoke test: set CLAUDE_CLI_LIVE=1. Costs a fraction of a cent. */

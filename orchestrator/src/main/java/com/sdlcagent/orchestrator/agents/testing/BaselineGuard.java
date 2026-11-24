@@ -26,6 +26,10 @@ public final class BaselineGuard {
         List<String> problems = new ArrayList<>();
         Set<String> declaredIds = new HashSet<>();
         for (SupersededTest d : declared) {
+            if (d.testId() == null || d.testId().isBlank()) {
+                problems.add("a supersededTests entry has no \"testId\"; use {\"testId\": \"ClassName#methodName\", \"reason\": \"...\"}");
+                continue;
+            }
             String id = TestInventory.normalizeId(d.testId());
             if (d.reason() == null || d.reason().isBlank()) {
                 problems.add("supersededTests entry for " + id + " has no reason");

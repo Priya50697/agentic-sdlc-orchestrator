@@ -16,7 +16,8 @@ import java.util.concurrent.TimeUnit;
  * Runs {@code claude -p} as a subprocess. Flags verified against the installed CLI:
  * tools disabled, no session persistence, no user/project/local settings, no MCP, no skills,
  * run from a neutral temp cwd so this repo's CLAUDE.md is never loaded. The prompt goes via stdin
- * (avoids Windows command-line length limits).
+ * (avoids Windows command-line length limits). The system prompt goes via {@code --system-prompt-file}: as an
+ * argument, Windows argv quoting silently truncates it at the first quoted phrase that contains a space.
  */
 public class ClaudeCliAdapter implements LlmClient {
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -43,14 +44,37 @@ public class ClaudeCliAdapter implements LlmClient {
         Duration timeout = request.timeout() != null ? request.timeout() : defaultTimeout;
         long start = System.nanoTime();
 
+        Path systemFile = null;
         Process process;
         try {
-            process = new ProcessBuilder(buildCommand(model, request.system()))
+            if (request.system() != null && !request.system().isBlank()) {
+                systemFile = Files.createTempFile(workDir, "system-", ".md");
+                Files.writeString(systemFile, request.system(), StandardCharsets.UTF_8);
+            }
+            process = new ProcessBuilder(buildCommand(model, systemFile))
                     .directory(workDir.toFile())
                     .start();
         } catch (IOException e) {
+            deleteQuietly(systemFile);
             throw new LlmException(LlmException.Kind.PROCESS, "cannot start '" + executable + "': " + e.getMessage(), e);
         }
+        try {
+            return run(process, model, timeout, start, request);
+        } finally {
+            deleteQuietly(systemFile);
+        }
+    }
+
+    private static void deleteQuietly(Path file) {
+        if (file == null) return;
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // temp file in a temp dir; nothing useful to do
+        }
+    }
+
+    private LlmResponse run(Process process, String model, Duration timeout, long start, LlmRequest request) {
 
         // Drain both streams concurrently so a full pipe buffer can never block the child.
         CompletableFuture<String> stdout = CompletableFuture.supplyAsync(() -> read(process.getInputStream()));
@@ -83,7 +107,7 @@ public class ClaudeCliAdapter implements LlmClient {
         return parseEnvelope(out, model, elapsedMs);
     }
 
-    List<String> buildCommand(String model, String system) {
+    List<String> buildCommand(String model, Path systemFile) {
         List<String> cmd = new ArrayList<>(List.of(
                 executable, "-p",
                 "--output-format", "json",
@@ -96,9 +120,9 @@ public class ClaudeCliAdapter implements LlmClient {
             cmd.add("--model");
             cmd.add(model);
         }
-        if (system != null && !system.isBlank()) {
-            cmd.add("--system-prompt");
-            cmd.add(system);
+        if (systemFile != null) {
+            cmd.add("--system-prompt-file");
+            cmd.add(systemFile.toAbsolutePath().toString());
         }
         return cmd;
     }
