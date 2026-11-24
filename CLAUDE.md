@@ -13,7 +13,7 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 - [x] P4 7 agents + prompts + schemas; dry-run greenfield
 - [x] P5 live Greenfield, export to docs/runs/
 - [x] P6 Brownfield + Ambiguous
-- [ ] P7 docs 01-04, README, final replay run
+- [x] P7 docs 01-04 (docs/design/), README (final replay run deliberately skipped, see progress.md)
 
 ## Commands (Windows; no system Maven)
 - Build+test: `cd orchestrator; .\mvnw.cmd test` (PowerShell) — exit code 0 = green
