@@ -5,12 +5,12 @@ result. Each state is a git tag, so any step can be inspected or diffed.
 
 | Tag | Commit | State of `url-shortener/` | Run | Tests passing |
 |---|---|---|---|---|
-| `run-greenfield` | `314ce0f` | the app as generated from nothing | `run-20261123-063431-d43d` | 25 |
-| `run-brownfield` | `6c50e79` | greenfield + aliases, expiry, rate limit | `run-20261124-142820-c6a0` | 40 |
-| `run-ambiguous` | `ca8cd1b` | brownfield + SSRF blocking, external check with fail-closed handling, rate-limit hardening | `run-20261124-143909-7885` | 70 |
+| `run-greenfield` | `7b94563` | the app as generated from nothing | `run-20261123-063431-d43d` | 25 |
+| `run-brownfield` | `225d3ec` | greenfield + aliases, expiry, rate limit | `run-20261124-142820-c6a0` | 40 |
+| `run-ambiguous` | `3c65806` | brownfield + SSRF blocking, external check with fail-closed handling, rate-limit hardening | `run-20261124-143909-7885` | 70 |
 
-Note: the greenfield export itself (audit, metrics, artifacts) was committed earlier as `203b0bf`; the generated code
-was first committed in `314ce0f`. Test counts come from each run's `test-report`.
+Note: the greenfield export itself (audit, metrics, artifacts) was committed earlier as `7323694`; the generated code
+was first committed in `7b94563`. Test counts come from each run's `test-report`.
 
 ## See the changes yourself
 

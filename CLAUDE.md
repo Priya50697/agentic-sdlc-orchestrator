@@ -1,6 +1,6 @@
 # Agentic SDLC Orchestrator + URL Shortener
 
-Interview project: an orchestrator (Java 21, Spring Boot 3.5, Maven) that drives a requirement through the SDLC
+Assignment project: an orchestrator (Java 21, Spring Boot 3.5, Maven) that drives a requirement through the SDLC
 with a dependency graph, gates, parallel+join, human approvals, bounded retry/rollback/safe-stop, policy
 guardrails, hash-chained audit and reliability metrics. Target app: `url-shortener/` (generated).
 
