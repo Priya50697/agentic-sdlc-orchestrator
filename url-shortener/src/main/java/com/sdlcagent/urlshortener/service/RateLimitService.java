@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Thread-safe in-memory fixed-window per-key (client IP) rate limiter.
+ * Defaults: 60 requests per 60 seconds.
  */
 @Service
 public class RateLimitService {
@@ -23,7 +24,7 @@ public class RateLimitService {
     private final AtomicLong lastSweepMillis;
 
     public RateLimitService(Clock clock,
-                            @Value("${ratelimit.max-requests:10}") int maxRequests,
+                            @Value("${ratelimit.max-requests:60}") int maxRequests,
                             @Value("${ratelimit.window-seconds:60}") long windowSeconds) {
         this.clock = clock;
         this.maxRequests = maxRequests;
@@ -46,7 +47,9 @@ public class RateLimitService {
             return new Window(current.startMillis(), next);
         });
         if (w.count() > maxRequests) {
-            throw new RateLimitExceededException();
+            long remainingMillis = Math.max(0L, w.startMillis() + windowMillis - now);
+            long retryAfter = Math.max(1L, (remainingMillis + 999L) / 1000L);
+            throw new RateLimitExceededException(retryAfter);
         }
     }
 

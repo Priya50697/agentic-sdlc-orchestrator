@@ -19,7 +19,7 @@ public class HttpUrlValidator implements ConstraintValidator<ValidUrl, String> {
         } catch (URISyntaxException e) {
             return false;
         }
-        if (!uri.isAbsolute()) {
+        if (!uri.isAbsolute() || uri.isOpaque()) {
             return false;
         }
         String scheme = uri.getScheme();

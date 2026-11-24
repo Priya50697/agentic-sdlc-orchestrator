@@ -1,0 +1,94 @@
+{
+  "overview" : "Harden the existing URL shortener. (1) Align the existing in-memory per-IP rate limiter with the spec: 60 requests/60s keyed by remoteAddr, 429 with Retry-After header, health endpoint excluded, bounded key map. (2) Add SSRF protection: a SsrfUrlValidator with an injectable host resolver rejects non-http(s) schemes, localhost, and literal or DNS-resolved loopback/private/link-local/ULA/unspecified addresses with HTTP 400 and a reason via UnsafeUrlException. (3) Add an ExternalCheckProvider interface (in provider/) with an HTTP implementation (3s connect/read timeout, redirects disabled, up to 2 retries with 200ms fixed backoff, connects only to validated addresses) and a local stub used by default/tests. Persistent failure throws ExternalCheckUnavailableException mapped to HTTP 503 with a JSON ErrorResponse (code + message, no stack trace). UrlShortenerService validates and checks before persisting, and persists nothing on failure. Rejections and failures are logged at WARN without query strings or credentials. Configuration is changed by modifying application.yml only.",
+  "components" : [ {
+    "name" : "RateLimitService",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/RateLimitService.java",
+    "responsibility" : "Fixed-window per-IP counter, defaults 60 requests/60s via properties, returns retry-after seconds, evicts expired windows to bound memory."
+  }, {
+    "name" : "RateLimitExceededException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/RateLimitExceededException.java",
+    "responsibility" : "Carries retryAfterSeconds so the 429 response can include a Retry-After header."
+  }, {
+    "name" : "RateLimitInterceptor",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/RateLimitInterceptor.java",
+    "responsibility" : "Applies the rate limit using request.getRemoteAddr() (ignores X-Forwarded-For) and throws RateLimitExceededException when over limit."
+  }, {
+    "name" : "WebMvcConfig",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/WebMvcConfig.java",
+    "responsibility" : "Registers the interceptor for all endpoints excluding the health endpoint (/actuator/health and /health), without exempting /shorten or /{code}."
+  }, {
+    "name" : "SsrfUrlValidator",
+    "layer" : "validator",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/validator/SsrfUrlValidator.java",
+    "responsibility" : "Spring component: checks scheme (http/https), rejects localhost and literal or DNS-resolved loopback, private RFC1918, link-local (169.254.0.0/16 incl. metadata IP), IPv6 unique-local, and unspecified addresses (all resolved addresses checked); resolver is injectable via a HostResolver functional interface; throws UnsafeUrlException with a reason and returns the validated InetAddress list."
+  }, {
+    "name" : "UnsafeUrlException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/UnsafeUrlException.java",
+    "responsibility" : "Runtime exception carrying a reason code/message for rejected URLs; mapped to HTTP 400."
+  }, {
+    "name" : "ExternalCheckProvider",
+    "layer" : "provider",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/provider/ExternalCheckProvider.java",
+    "responsibility" : "Interface for the outbound URL check: check(URI, List<InetAddress> validatedAddresses) throws ExternalCheckUnavailableException on failure."
+  }, {
+    "name" : "HttpExternalCheckProvider",
+    "layer" : "provider",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/provider/HttpExternalCheckProvider.java",
+    "responsibility" : "JDK HttpClient-based implementation: 3s timeout, redirects NEVER, up to 2 retries with 200ms fixed backoff, connects to the validated address to avoid DNS rebinding; WARN-logs failures sanitized (host only); throws ExternalCheckUnavailableException after retries. Active when external-check.mode=http."
+  }, {
+    "name" : "StubExternalCheckProvider",
+    "layer" : "provider",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/provider/StubExternalCheckProvider.java",
+    "responsibility" : "Local stub that always succeeds without network access; default implementation (external-check.mode=stub, matchIfMissing) so existing tests and local runs do not depend on outbound calls."
+  }, {
+    "name" : "ExternalCheckUnavailableException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/ExternalCheckUnavailableException.java",
+    "responsibility" : "Runtime exception signalling failure after retries; mapped to HTTP 503."
+  }, {
+    "name" : "ExternalCheckProperties",
+    "layer" : "util",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/util/ExternalCheckProperties.java",
+    "responsibility" : "@ConfigurationProperties record (external-check.timeout-ms=3000, max-retries=2, backoff-ms=200, mode) bound from application.yml."
+  }, {
+    "name" : "UrlShortenerService",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/UrlShortenerService.java",
+    "responsibility" : "In shorten(): run SsrfUrlValidator, then ExternalCheckProvider, then persist; nothing is persisted if either step throws."
+  }, {
+    "name" : "HttpUrlValidator",
+    "layer" : "validator",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/validator/HttpUrlValidator.java",
+    "responsibility" : "Syntactic validation; ensures only http/https schemes pass, keeping the existing 400 message format."
+  }, {
+    "name" : "GlobalExceptionHandler",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/GlobalExceptionHandler.java",
+    "responsibility" : "Adds handlers: UnsafeUrlException -> 400, ExternalCheckUnavailableException -> 503, RateLimitExceededException -> 429 with Retry-After; all return ErrorResponse JSON with no stack traces or internal hostnames; the generic 500 handler stays last."
+  }, {
+    "name" : "ErrorResponse",
+    "layer" : "dto",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dto/ErrorResponse.java",
+    "responsibility" : "Consistent error body (error code + message) reused for 400/429/503; existing format preserved."
+  } ],
+  "endpoints" : [ {
+    "verb" : "POST",
+    "path" : "/shorten",
+    "description" : "Validates the URL (syntax, scheme, SSRF), performs the external check with timeout/retries, then persists. 201 on success; 400 for invalid/unsafe URL; 429 when rate limited; 503 when the external check fails."
+  }, {
+    "verb" : "GET",
+    "path" : "/{code}",
+    "description" : "Redirects to the original URL; subject to rate limiting (429 with Retry-After)."
+  }, {
+    "verb" : "GET",
+    "path" : "/actuator/health",
+    "description" : "Health endpoint excluded from rate limiting (if present)."
+  } ],
+  "dataModel" : [ "No schema changes: the existing URL mapping entity (id, shortCode, originalUrl, createdAt, ...) is unchanged; nothing is persisted when validation or the external check fails.", "RateLimitService in-memory state: Map<String, Window(windowStart:long, count:int)> keyed by remote IP, with expired entries evicted" ],
+  "tasks" : [ ]
+}

@@ -1,0 +1,70 @@
+{
+  "title" : "Harden URL-checking service against abuse and external-check failures",
+  "summary" : "The existing service accepts URLs and relies on external checks. It must be made safer against abuse (rate limiting and rejection of private/internal URLs, i.e. SSRF protection) and more reliable when external checks fail (timeouts, bounded retries, and a defined degraded response instead of an unhandled error).",
+  "stories" : [ {
+    "id" : "S1",
+    "text" : "As a service operator, I want clients that send too many requests to be throttled, so that the service is protected from abuse."
+  }, {
+    "id" : "S2",
+    "text" : "As a service operator, I want submitted URLs that point to private or internal addresses to be rejected, so that the service cannot be used to reach internal resources."
+  }, {
+    "id" : "S3",
+    "text" : "As an API client, I want a clear and predictable response when an external check fails or is slow, so that I am not left with hangs or unexplained server errors."
+  } ],
+  "acceptanceCriteria" : [ {
+    "id" : "AC-1",
+    "storyId" : "S1",
+    "text" : "When a single client (identified by IP address) sends more than 60 requests within 60 seconds, further requests in that window receive HTTP 429 with a Retry-After header."
+  }, {
+    "id" : "AC-2",
+    "storyId" : "S1",
+    "text" : "Requests within the limit are processed normally and are not affected by the rate limiter."
+  }, {
+    "id" : "AC-3",
+    "storyId" : "S2",
+    "text" : "A submitted URL whose host is a literal or resolved address in a loopback, private (RFC 1918), link-local (including 169.254.169.254), unique-local IPv6, or unspecified range, or is localhost, is rejected with HTTP 400 and an error body naming the reason, and no outbound call is made to it."
+  }, {
+    "id" : "AC-4",
+    "storyId" : "S2",
+    "text" : "A submitted URL with a scheme other than http or https is rejected with HTTP 400."
+  }, {
+    "id" : "AC-5",
+    "storyId" : "S2",
+    "text" : "A URL with a public host passes validation and proceeds to the external check."
+  }, {
+    "id" : "AC-6",
+    "storyId" : "S3",
+    "text" : "Each external check call times out after 3 seconds, and a failed or timed-out call is retried up to 2 more times before being treated as failed."
+  }, {
+    "id" : "AC-7",
+    "storyId" : "S3",
+    "text" : "When an external check still fails after retries, the API returns HTTP 503 with a JSON body containing an error code and message (no stack trace), instead of HTTP 500 or a hang."
+  } ],
+  "ambiguities" : [ {
+    "id" : "A1",
+    "question" : "How should a client be identified for rate limiting (IP address, API key, authenticated user), and what are the limits?",
+    "severity" : "BLOCKING",
+    "proposedDefault" : "Identify by client IP address; 60 requests per 60 seconds per IP, held in memory (single instance)."
+  }, {
+    "id" : "A2",
+    "question" : "When an external check fails, should the service return an error or a degraded/fallback result (e.g. status UNKNOWN)?",
+    "severity" : "BLOCKING",
+    "proposedDefault" : "Return HTTP 503 with a JSON error body; no fallback result is fabricated and no failed result is persisted as successful."
+  }, {
+    "id" : "A3",
+    "question" : "Should private/internal URL blocking also apply to redirects and to DNS names that resolve to private addresses?",
+    "severity" : "BLOCKING",
+    "proposedDefault" : "Yes: resolve the hostname and reject if any resolved address is private/internal; do not follow redirects automatically (or re-validate each hop)."
+  }, {
+    "id" : "A4",
+    "question" : "Which endpoints does the rate limit apply to?",
+    "severity" : "MINOR",
+    "proposedDefault" : "All API endpoints except the health endpoint."
+  }, {
+    "id" : "A5",
+    "question" : "Should a circuit breaker be used in addition to timeout and retry?",
+    "severity" : "MINOR",
+    "proposedDefault" : "No; timeout plus bounded retry only."
+  } ],
+  "nonFunctional" : [ "Rate limiting state may be in-memory for a single instance; no new external infrastructure is required.", "Rejected URLs and external-check failures are logged at WARN level without logging sensitive request data.", "Retries use a short fixed backoff (e.g. 200 ms) so the worst-case request latency stays bounded (under about 12 seconds).", "Error responses use a consistent JSON structure and never expose stack traces or internal hostnames.", "New behaviour is covered by automated tests for each acceptance criterion." ]
+}

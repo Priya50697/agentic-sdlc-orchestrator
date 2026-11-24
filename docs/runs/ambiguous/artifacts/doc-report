@@ -1,0 +1,7 @@
+{
+  "summary" : "README.md covering Overview, API (POST /shorten and GET /{code}), Running and Testing, including rate limiting, SSRF protection and external-check failure behaviour.",
+  "files" : [ "README.md" ],
+  "sections" : [ "URL Shortener Service", "Overview", "API", "`POST /shorten`", "`GET /{code}`", "Running", "Testing" ],
+  "documentedEndpoints" : [ "POST /shorten", "GET /{}" ],
+  "templateFallback" : false
+}

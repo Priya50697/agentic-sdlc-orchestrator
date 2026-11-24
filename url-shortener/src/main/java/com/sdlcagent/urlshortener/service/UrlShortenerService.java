@@ -1,15 +1,20 @@
 package com.sdlcagent.urlshortener.service;
 
+import java.net.InetAddress;
+import java.net.URI;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sdlcagent.urlshortener.dao.UrlMapping;
 import com.sdlcagent.urlshortener.dao.UrlMappingRepository;
 import com.sdlcagent.urlshortener.dto.ShortenRequest;
+import com.sdlcagent.urlshortener.provider.ExternalCheckProvider;
 import com.sdlcagent.urlshortener.util.CodeGenerator;
 import com.sdlcagent.urlshortener.validator.AliasValidator;
+import com.sdlcagent.urlshortener.validator.SsrfUrlValidator;
 import com.sdlcagent.urlshortener.validator.TtlValidator;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -24,17 +29,23 @@ public class UrlShortenerService {
     private final Clock clock;
     private final AliasValidator aliasValidator;
     private final TtlValidator ttlValidator;
+    private final SsrfUrlValidator ssrfUrlValidator;
+    private final ExternalCheckProvider externalCheckProvider;
 
     public UrlShortenerService(UrlMappingRepository repository,
                                CodeGenerator codeGenerator,
                                Clock clock,
                                AliasValidator aliasValidator,
-                               TtlValidator ttlValidator) {
+                               TtlValidator ttlValidator,
+                               SsrfUrlValidator ssrfUrlValidator,
+                               ExternalCheckProvider externalCheckProvider) {
         this.repository = repository;
         this.codeGenerator = codeGenerator;
         this.clock = clock;
         this.aliasValidator = aliasValidator;
         this.ttlValidator = ttlValidator;
+        this.ssrfUrlValidator = ssrfUrlValidator;
+        this.externalCheckProvider = externalCheckProvider;
     }
 
     public String shorten(String url) {
@@ -58,6 +69,16 @@ public class UrlShortenerService {
                 throw new InvalidTtlException("ttlSeconds is out of range");
             }
         }
+
+        // SSRF validation, then external check; both must succeed before anything is persisted.
+        List<InetAddress> validatedAddresses = ssrfUrlValidator.validate(url);
+        URI uri;
+        try {
+            uri = URI.create(url);
+        } catch (IllegalArgumentException e) {
+            throw new UnsafeUrlException("invalid url");
+        }
+        externalCheckProvider.check(uri, validatedAddresses);
 
         if (customAlias != null) {
             return createWithAlias(url, customAlias, expiresAt);

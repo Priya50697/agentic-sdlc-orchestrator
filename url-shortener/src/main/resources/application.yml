@@ -17,5 +17,11 @@ server:
     include-stacktrace: never
 
 ratelimit:
-  max-requests: 10
+  max-requests: 60
   window-seconds: 60
+
+external-check:
+  timeout-ms: 3000
+  max-retries: 2
+  backoff-ms: 200
+  mode: stub

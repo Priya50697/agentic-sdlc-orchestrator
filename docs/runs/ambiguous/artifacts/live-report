@@ -1,0 +1,59 @@
+{
+  "started" : true,
+  "note" : null,
+  "checks" : [ {
+    "name" : "shorten valid URL",
+    "expected" : "201 + code",
+    "actual" : "201 {\"code\":\"d4kFcWq\"}",
+    "passed" : true,
+    "severity" : "required"
+  }, {
+    "name" : "redirect known code",
+    "expected" : "302 + Location=https://example.com/live-check?x=1",
+    "actual" : "302 Location=https://example.com/live-check?x=1",
+    "passed" : true,
+    "severity" : "required"
+  }, {
+    "name" : "unknown code",
+    "expected" : "404",
+    "actual" : "404 {\"status\":404,\"error\":\"Not Found\",\"message\":\"Short code not found\"}",
+    "passed" : true,
+    "severity" : "required"
+  }, {
+    "name" : "blank url",
+    "expected" : "400",
+    "actual" : "400 {\"status\":400,\"error\":\"Bad Request\",\"message\":\"url: url must not be blank; url: url must be an absolute http or https UR",
+    "passed" : true,
+    "severity" : "required"
+  }, {
+    "name" : "missing url field",
+    "expected" : "400",
+    "actual" : "400 {\"status\":400,\"error\":\"Bad Request\",\"message\":\"url: url must be an absolute http or https URL; url: url must not be blan",
+    "passed" : true,
+    "severity" : "required"
+  }, {
+    "name" : "non-http scheme (ftp)",
+    "expected" : "400",
+    "actual" : "400 {\"status\":400,\"error\":\"Bad Request\",\"message\":\"url: url must be an absolute http or https URL\"}",
+    "passed" : true,
+    "severity" : "required"
+  }, {
+    "name" : "javascript scheme",
+    "expected" : "400",
+    "actual" : "400 {\"status\":400,\"error\":\"Bad Request\",\"message\":\"url: url must be an absolute http or https URL\"}",
+    "passed" : true,
+    "severity" : "required"
+  }, {
+    "name" : "malformed JSON",
+    "expected" : "400",
+    "actual" : "400 {\"status\":400,\"error\":\"Bad Request\",\"message\":\"Malformed or missing request body\"}",
+    "passed" : true,
+    "severity" : "required"
+  }, {
+    "name" : "private/link-local host",
+    "expected" : "400",
+    "actual" : "400 {\"status\":400,\"error\":\"Bad Request\",\"message\":\"Unsafe URL rejected: URL host resolves to a link-local address\",\"code\":\"U",
+    "passed" : true,
+    "severity" : "hardening"
+  } ]
+}

@@ -1,0 +1,39 @@
+{
+  "tasks" : [ {
+    "id" : "T1",
+    "description" : "Create core exceptions and config properties: UnsafeUrlException (reason), ExternalCheckUnavailableException, ExternalCheckProperties (timeout-ms, max-retries, backoff-ms, mode); add external-check settings and ratelimit defaults (max-requests 60, window 60s) to application.yml.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/service/UnsafeUrlException.java", "src/main/java/com/sdlcagent/urlshortener/service/ExternalCheckUnavailableException.java", "src/main/java/com/sdlcagent/urlshortener/util/ExternalCheckProperties.java", "src/main/resources/application.yml" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-6", "AC-7" ]
+  }, {
+    "id" : "T2",
+    "description" : "Align rate limiting: 60 req/60s per IP via remoteAddr, evict expired windows, RateLimitExceededException carries retryAfterSeconds, interceptor throws it only over the limit (in-limit requests unaffected), WebMvcConfig excludes the health endpoint only.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/service/RateLimitService.java", "src/main/java/com/sdlcagent/urlshortener/service/RateLimitExceededException.java", "src/main/java/com/sdlcagent/urlshortener/controller/RateLimitInterceptor.java", "src/main/java/com/sdlcagent/urlshortener/controller/WebMvcConfig.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-2" ]
+  }, {
+    "id" : "T3",
+    "description" : "Implement SsrfUrlValidator with injectable HostResolver: scheme check (http/https), localhost, literal and DNS-resolved loopback/private/link-local/ULA/unspecified rejection (all addresses), WARN log of host only; harden HttpUrlValidator to accept only http/https.",
+    "dependsOn" : [ "T1" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/validator/SsrfUrlValidator.java", "src/main/java/com/sdlcagent/urlshortener/validator/HttpUrlValidator.java" ],
+    "acceptanceCriteria" : [ "AC-3", "AC-4", "AC-5" ]
+  }, {
+    "id" : "T4",
+    "description" : "Implement ExternalCheckProvider interface, HttpExternalCheckProvider (3s timeout, no redirects, 2 retries, 200ms fixed backoff, validated-address connection, sanitized WARN logging) and StubExternalCheckProvider (default).",
+    "dependsOn" : [ "T1" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/provider/ExternalCheckProvider.java", "src/main/java/com/sdlcagent/urlshortener/provider/HttpExternalCheckProvider.java", "src/main/java/com/sdlcagent/urlshortener/provider/StubExternalCheckProvider.java" ],
+    "acceptanceCriteria" : [ "AC-6", "AC-7", "AC-5" ]
+  }, {
+    "id" : "T5",
+    "description" : "Wire UrlShortenerService: call SsrfUrlValidator then ExternalCheckProvider before persisting; no persistence on failure; keep constructor changes consistent.",
+    "dependsOn" : [ "T3", "T4" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/service/UrlShortenerService.java" ],
+    "acceptanceCriteria" : [ "AC-3", "AC-5", "AC-7" ]
+  }, {
+    "id" : "T6",
+    "description" : "Update GlobalExceptionHandler: UnsafeUrlException -> 400 with reason, ExternalCheckUnavailableException -> 503 with code and message, RateLimitExceededException -> 429 with Retry-After header; keep ErrorResponse format consistent with no stack traces or internal hostnames.",
+    "dependsOn" : [ "T1", "T2" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/controller/GlobalExceptionHandler.java", "src/main/java/com/sdlcagent/urlshortener/dto/ErrorResponse.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-3", "AC-4", "AC-7" ]
+  } ]
+}

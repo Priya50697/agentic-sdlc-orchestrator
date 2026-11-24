@@ -1,0 +1,34 @@
+{
+  "verdict" : "READY",
+  "summary" : "The pipeline built a URL shortener service with POST /shorten and GET /{code}, including custom aliases, TTL expiry (410 for expired), per-IP rate limiting (429 with Retry-After), SSRF protection, scheme validation, and an external check provider with timeout/retry that maps failures to 503. All 70 tests passed with no failures, errors or skips, and every acceptance criterion (AC-1 to AC-7) has passing coverage with no uncovered criteria. README.md was produced (not a template fallback) and documents both endpoints, rate limiting, SSRF and failure behavior. The audit chain is valid across 68 events with 0 policy violations, no missing stages, 16/16 nodes passed, and no retries or route-backs. The advisory live endpoint check started successfully and all 9 probes passed, including the hardening probe for link-local host rejection.",
+  "risks" : [ "Audit metrics show run outcome as IN_PROGRESS and one invalidation was recorded; the invalidation is not explained in the provided facts, though no failures resulted.", "SSRF tests use literal IPs only, so DNS-based attacks (hostnames resolving to internal addresses, DNS rebinding) are not exercised by tests.", "Rate limiting is tested via MockMvc with a per-client IP key; behavior behind proxies or load balancers (X-Forwarded-For) and across multiple instances is unverified.", "Provider timeout/retry was tested against local loopback sockets with small timeouts, not against a real external provider.", "Documented endpoint list shows 'GET /{}' as a placeholder form, suggesting minor doc formatting imprecision." ],
+  "followUps" : [ "Add tests for hostnames that resolve to private/loopback addresses and for DNS rebinding protections.", "Verify client IP resolution and rate-limit behavior behind a reverse proxy, and consider a shared limiter store if running multiple instances.", "Review the recorded invalidation in the audit log to confirm it was an expected pipeline step.", "Fix the 'GET /{code}' path rendering in the README endpoint documentation." ],
+  "facts" : {
+    "auditChainValid" : true,
+    "auditEvents" : 68,
+    "criticalViolations" : 0,
+    "totalViolations" : 0,
+    "missingStages" : [ ],
+    "metrics" : {
+      "runId" : "run-20261124-143909-7885",
+      "outcome" : "IN_PROGRESS",
+      "nodesPassed" : 16,
+      "nodesFailed" : 0,
+      "nodeSuccessRate" : 1.0,
+      "retries" : 0,
+      "routeBacks" : 0,
+      "rollbacks" : 0,
+      "invalidations" : 1,
+      "policyViolations" : 0,
+      "humanApprovals" : 3,
+      "llmCalls" : 13,
+      "inputTokens" : 114585,
+      "outputTokens" : 42627,
+      "costUsd" : 0.8576830999999999,
+      "failuresRecovered" : 0,
+      "mttrMillis" : null,
+      "e2eLatencyMillis" : null,
+      "cacheHits" : 0
+    }
+  }
+}

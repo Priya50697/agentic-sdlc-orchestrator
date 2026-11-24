@@ -1,86 +1,56 @@
-# URL Shortener
+# URL Shortener Service
 
 ## Overview
 
-A Spring Boot URL shortener service. Callers submit a long URL and receive a short code, and visiting the short code redirects to the original URL.
+A Spring Boot service that shortens URLs and redirects short codes to the original URL. It is hardened against abuse and external-check failures:
 
-Features:
-
-- Optional custom alias used as the short code.
-- Optional time-to-live (`ttlSeconds`). After expiry the link returns 410 Gone.
-- Per-client-IP rate limiting on link creation (429 Too Many Requests when exceeded).
-- Existing behaviour is unchanged: requests without `customAlias` or `ttlSeconds` get a generated code, and existing links never expire.
-
-Design notes:
-
-- Aliases and generated codes share one unique namespace. Uniqueness is enforced by a database unique constraint on the code.
-- Expiry is stored as an absolute UTC timestamp and checked against the current time on each request. Links without expiry have a null value.
-- Rate limiting is an in-memory, thread-safe, fixed-window limiter per instance. State resets on restart. The client IP is the servlet remote address, and `X-Forwarded-For` is not trusted.
-- Every creation request counts toward the limit regardless of outcome. The check runs before body validation, so 429 takes precedence over 400 and 409.
-- All errors use one JSON body: `{"status": <int>, "error": "<text>", "message": "<text>"}`. Stack traces are never returned.
+- **Rate limiting**: each client IP (taken from the connection's remote address) may send 60 requests per 60 seconds. Further requests in the window get HTTP 429 with a `Retry-After` header. The limits are configurable via `ratelimit.max-requests` and `ratelimit.window-seconds`. State is held in memory (single instance).
+- **SSRF protection**: submitted URLs must use `http` or `https`. URLs whose host is `localhost`, or a literal or DNS-resolved loopback, private (RFC 1918), link-local (including 169.254.169.254), IPv6 unique-local or unspecified address, are rejected with HTTP 400 and no outbound call is made.
+- **External check resilience**: each external check call times out after 3 seconds and is retried up to 2 more times with a 200 ms fixed backoff. Redirects are not followed. If the check still fails, the API returns HTTP 503 with a JSON error body and nothing is persisted.
+- By default the external check uses a local stub that makes no network calls. Set `external-check.mode=http` to use the real HTTP check.
 
 ## API
 
+Error responses share one JSON shape: `status`, `error`, `message` and, where applicable, `code`. They never contain stack traces.
+
 ### `POST /shorten`
 
-Create a short link.
+Creates a short code for a URL. The URL is validated (syntax, scheme, SSRF) and externally checked before it is persisted.
 
 Request body (JSON):
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `url` | string | yes | Must be a valid http or https URL. |
-| `customAlias` | string | no | Must match `^[A-Za-z0-9_-]+$`, 3 to 32 characters, case-sensitive. Reserved route names (e.g. `shorten`) are rejected. |
-| `ttlSeconds` | integer | no | Strictly a positive integer. If omitted, the link never expires. Zero, negative, fractional (`1.5`) and non-numeric (`"abc"`) values are rejected. |
-
-Example:
-
 ```json
-{ "url": "https://example.com/some/long/path", "customAlias": "my-link", "ttlSeconds": 3600 }
+{ "url": "https://example.com/page", "customAlias": "my-alias", "ttlSeconds": 3600 }
 ```
+
+- `url` (required): an http or https URL.
+- `customAlias` (optional): custom short code.
+- `ttlSeconds` (optional): lifetime of the link in seconds. If omitted, the link does not expire.
 
 Success response: `201 Created`
 
 ```json
-{ "code": "my-link" }
+{ "code": "abc123" }
 ```
-
-The `code` equals `customAlias` when one is given, otherwise it is generated.
 
 Status codes:
 
-| Status | Meaning |
-|---|---|
-| 201 | Link created. |
-| 400 | Invalid or missing `url`, malformed JSON body, invalid alias (bad characters, wrong length, reserved name) or invalid `ttlSeconds`. No link is created. |
-| 409 | The alias is already in use. The existing link is not modified. |
-| 429 | The client IP exceeded the creation rate limit. |
+- `201` created.
+- `400` invalid or missing URL, malformed JSON, invalid alias, invalid TTL, non-http(s) scheme, or a private/internal URL (the error body names the reason).
+- `409` custom alias already exists.
+- `429` rate limit exceeded (includes `Retry-After` header).
+- `503` external check failed or timed out after retries (JSON error body with an error code and message).
 
 ### `GET /{code}`
 
-Resolve a short code and redirect to the original URL.
-
-Path parameter: `code`, the generated code or custom alias.
-
-Response: a redirect to the target URL, with the target in the `Location` header.
+Redirects to the original URL for the given short code. There is no request body.
 
 Status codes:
 
-| Status | Meaning |
-|---|---|
-| 3xx | Redirect to the original URL. |
-| 404 | The code never existed. |
-| 410 | The link existed but has expired. |
-
-### Rate limit configuration
-
-Defaults are 10 creation requests per IP per 60-second window. Override them in `application.yml` or application properties:
-
-```yaml
-ratelimit:
-  max-requests: 10
-  window-seconds: 60
-```
+- Redirect response with the original URL in the `Location` header for a known, unexpired code.
+- `404` unknown code.
+- `410` link has expired.
+- `429` rate limit exceeded (includes `Retry-After` header).
 
 ## Running
 
@@ -90,10 +60,16 @@ mvnw spring-boot:run
 
 On Windows PowerShell use `.\mvnw spring-boot:run`.
 
+Relevant configuration in `application.yml`:
+
+- `ratelimit.max-requests` (default 60) and `ratelimit.window-seconds` (default 60)
+- `external-check.mode` (`stub` by default, or `http`)
+- `external-check.timeout-ms` (3000), `external-check.max-retries` (2), `external-check.backoff-ms` (200)
+
 ## Testing
 
 ```
 mvnw test
 ```
 
-On Windows PowerShell use `.\mvnw test`.
+The tests cover the acceptance criteria, including rate limiting, rejection of unsafe URLs and the 503 behaviour when the external check fails.

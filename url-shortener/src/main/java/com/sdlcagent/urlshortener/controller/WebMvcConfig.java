@@ -15,6 +15,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(rateLimitInterceptor).addPathPatterns("/shorten");
+        registry.addInterceptor(rateLimitInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/actuator/health", "/actuator/health/**", "/health");
     }
 }
