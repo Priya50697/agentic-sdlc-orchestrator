@@ -1,8 +1,9 @@
 # 01 - Architecture Overview
 
 The orchestrator (`orchestrator/`, Java 21, Spring Boot 3.5, Maven) drives one requirement through the SDLC and
-produces a working service in `url-shortener/`. Everything that *decides* (gates, policies, routing, budgets) is
-ordinary code. The LLM only produces artifacts.
+produces a working service in `url-shortener/`. The seven SDLC agents call an LLM (`claude -p` by default) to write
+the specs, plans, code, tests, docs and review. Everything that *decides* (gates, policies, routing, budgets) is
+deterministic Java code, not LLM output: the LLM drafts, and deterministic code accepts, rejects, retries or stops.
 
 ## 1. Two-level graph
 
