@@ -22,7 +22,9 @@ scenarios: greenfield, brownfield and ambiguous.
 
 ## Results of the three live runs
 
-All used `claude -p` with `sonnet`. Artifacts, audit logs, metrics and console logs are in `docs/runs/<scenario>/`.
+The scenario requirements live in `orchestrator/src/main/resources/scenarios/`; running one writes its state to
+`.orchestrator/runs/<id>/` (gitignored), and the finished runs were copied to `docs/runs/<scenario>/` (artifacts, audit
+logs, metrics, console logs, and the requirement that was run). All used `claude -p` with `sonnet`.
 
 | | Greenfield | Brownfield | Ambiguous |
 |---|---|---|---|
@@ -54,10 +56,14 @@ cost. Full instructions, REST mode and troubleshooting: [docs/design/03-setup-an
 
 ```
 orchestrator/      the orchestrator (engine, governance, agents, llm, workspace, context, observability, api, cli)
+  src/main/resources/scenarios/   the three scenario requirements (greenfield.md, brownfield.md, ambiguous.md)
+  src/main/resources/prompts/     one prompt per agent
 url-shortener/     generated target app (tracked as a deliverable); has its own README
 docs/design/       01 architecture, 02 agent specifications, 03 setup and execution, 04 testing and trade-offs
-docs/runs/         exported greenfield / brownfield / ambiguous runs (audit.jsonl, metrics, state, artifacts, run.log)
-docs/plan/         foundational plan and progress.md (phase-by-phase handoff log)
+docs/runs/         one folder per scenario run: requirement-input.md (the requirement actually run), audit.jsonl,
+                   metrics-summary.json, state.json, artifacts/, run.log
+                   url-shortener-code-history.md: what each run added and changed in url-shortener/
+docs/plan/         progress-tracker.md: phase-by-phase handoff log (deviations, open issues)
 .orchestrator/     gitignored run state, workspace git and LLM cache
 ```
 
@@ -67,6 +73,7 @@ docs/plan/         foundational plan and progress.md (phase-by-phase handoff log
 2. [Agent specifications](docs/design/02-agent-specifications.md): each agent's inputs, outputs, gates and permissions
 3. [Setup and execution](docs/design/03-setup-and-execution.md): build, run, approve, verify
 4. [Testing and trade-offs](docs/design/04-testing-and-tradeoffs.md): test strategy, run comparison, deviations, limits
+5. [url-shortener code history](docs/runs/url-shortener-code-history.md): files added and changed in the app by each run
 
 ## Known limitations
 

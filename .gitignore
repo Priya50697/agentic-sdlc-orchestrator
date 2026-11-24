@@ -43,3 +43,6 @@ target/
 ### IntelliJ project files ###
 .idea/
 *.iml
+
+### Local-only planning doc ###
+docs/plan/00-foundational-plan.md

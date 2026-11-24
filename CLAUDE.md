@@ -4,16 +4,16 @@ Interview project: an orchestrator (Java 21, Spring Boot 3.5, Maven) that drives
 with a dependency graph, gates, parallel+join, human approvals, bounded retry/rollback/safe-stop, policy
 guardrails, hash-chained audit and reliability metrics. Target app: `url-shortener/` (generated).
 
-**Read first:** `docs/plan/progress.md` (what is done, deviations, open issues), then `docs/plan/00-foundational-plan.md` only for the phase you are on.
+**Read first:** `docs/plan/progress-tracker.md` (what is done, deviations, open issues), then `docs/plan/00-foundational-plan.md` (local only, gitignored) only for the phase you are on.
 
-## Phases (update checkbox + progress.md at the END of every phase, before /clear)
+## Phases (update checkbox + progress-tracker.md at the END of every phase, before /clear)
 - [x] P1 llm/, observability/, persistence/, pom+mvnw, CLAUDE.md
 - [x] P2 engine/ + governance/ + engine tests with FakeLlmClient
 - [x] P3 workspace/ (scaffold, git, maven, sandbox), context/ (CodeIndexer), REST + console
 - [x] P4 7 agents + prompts + schemas; dry-run greenfield
 - [x] P5 live Greenfield, export to docs/runs/
 - [x] P6 Brownfield + Ambiguous
-- [x] P7 docs 01-04 (docs/design/), README (final replay run deliberately skipped, see progress.md)
+- [x] P7 docs 01-04 (docs/design/), README (final replay run deliberately skipped, see progress-tracker.md)
 
 ## Commands (Windows; no system Maven)
 - Build+test: `cd orchestrator; .\mvnw.cmd test` (PowerShell) — exit code 0 = green
@@ -52,5 +52,5 @@ guardrails, hash-chained audit and reliability metrics. Target app: `url-shorten
 
 ## Don'ts
 - Don't commit `.orchestrator/`, `target/`, or keys. Don't add Ollama. Don't call the real LLM in unit tests.
-- Don't put implementation detail or file listings in this file; put handoff notes in progress.md.
+- Don't put implementation detail or file listings in this file; put handoff notes in progress-tracker.md.
 - PowerShell 5.1 drops empty-string args (`--tools ""`); use the Bash tool or Java ProcessBuilder for those.
