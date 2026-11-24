@@ -173,7 +173,8 @@ public class TestEngineerAgent extends AbstractLlmAgent<TestSuite> {
             SurefireParser.TestSummary summary = SurefireParser.parseReports(scratch);
             ArtifactStore store = new ArtifactStore(paths, ctx.runId());
             String graph = store.get(StageGraph.TASK_GRAPH).orElse("");
-            FailureInfo failure = SurefireParser.classify(run, summary, workspace.projectPackage(), OwnerResolver.from(graph));
+            Map<String, String> baseline = baselineMethods(ctx.runId());
+            FailureInfo failure = SurefireParser.classify(run, summary, workspace.projectPackage(), OwnerResolver.from(graph, baseline.keySet()));
             if (failure != null) return new NodeResult(Map.of(), List.of(), usage, failure);
             NormalizedSpec spec = Json.readOrNull(input(ctx, StageGraph.SPEC), NormalizedSpec.class);
             TestReport report = buildReport(suite, summary, spec);

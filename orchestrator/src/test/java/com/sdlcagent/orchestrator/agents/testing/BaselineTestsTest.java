@@ -155,4 +155,14 @@ class BaselineTestsTest {
         assertThat(owner.apply("com.x.UrlShortenerAcceptanceTest#ac16_other")).isNull();
         assertThat(owner.apply("com.x.UrlShortenerAcceptanceTest")).isNull();
     }
+
+    @Test
+    void baselineTestsAreNotMappedByCriterionBecauseTheirNumbersBelongToTheOldSpec() {
+        String graph = """
+                {"tasks":[{"id":"T1","description":"d","dependsOn":[],"targetPaths":["src/main/java/com/x/A.java"],
+                           "acceptanceCriteria":["AC-6"]}]}""";
+        var owner = OwnerResolver.from(graph, java.util.Set.of("UrlShortenerAcceptanceTest#ac6_noAnalyticsStored"));
+        assertThat(owner.apply("com.x.UrlShortenerAcceptanceTest#ac6_noAnalyticsStored")).isNull();
+        assertThat(owner.apply("com.x.UrlShortenerAcceptanceTest#ac6_newRateLimitTest")).isEqualTo("impl:T1");
+    }
 }

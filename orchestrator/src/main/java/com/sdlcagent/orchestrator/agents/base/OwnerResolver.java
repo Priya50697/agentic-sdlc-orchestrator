@@ -1,6 +1,8 @@
 package com.sdlcagent.orchestrator.agents.base;
 
 import com.sdlcagent.orchestrator.engine.TaskGraph;
+import com.sdlcagent.orchestrator.workspace.TestInventory;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,18 +15,31 @@ public final class OwnerResolver {
     private OwnerResolver() {}
 
     public static Function<String, String> from(String taskGraphJson) {
+        return from(taskGraphJson, Set.of());
+    }
+
+    /**
+     * @param baselineTestIds ids ("Class#method") of tests that existed before the run. Their acN numbers come from
+     *                        the old spec, so they are never mapped to a task by acceptance criterion.
+     */
+    public static Function<String, String> from(String taskGraphJson, Set<String> baselineTestIds) {
         TaskGraph graph;
         try {
             graph = TaskGraph.parse(taskGraphJson);
         } catch (RuntimeException e) {
             return x -> null;
         }
-        return what -> owner(graph, what);
+        return what -> owner(graph, what, baselineTestIds);
     }
 
     static String owner(TaskGraph graph, String fileOrClass) {
+        return owner(graph, fileOrClass, Set.of());
+    }
+
+    static String owner(TaskGraph graph, String fileOrClass, Set<String> baselineTestIds) {
         if (fileOrClass == null || fileOrClass.isBlank()) return null;
-        String byAc = ownerByCriterion(graph, fileOrClass);
+        boolean baseline = fileOrClass.contains("#") && baselineTestIds.contains(TestInventory.normalizeId(fileOrClass));
+        String byAc = baseline ? null : ownerByCriterion(graph, fileOrClass);
         if (byAc != null) return byAc;
         String f = fileOrClass.replace('\\', '/');
         String stem = stem(f);
