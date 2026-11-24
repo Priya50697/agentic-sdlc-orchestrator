@@ -6,6 +6,8 @@ Rules:
 - Every test method carries @DisplayName("AC-n <what is verified>") AND a method name that starts with the same criterion, e.g. ac1_returns201WithCode or ac10_rejectsLongUrl (the report reads the method name from Surefire). Do not mention any other AC id in a test name. Every AC in the spec needs at least one test. "AC-1" and "AC-10" are different criteria.
 - Prefer @SpringBootTest + MockMvc for HTTP behaviour; stub external providers with the stub beans that exist in the code index. Tests must be deterministic: no sleeping, no network, no ordering dependencies.
 - Only create files under src/test/java/<project package path>/. Never delete or weaken existing tests; never touch src/main.
+- Tests must be isolated: components with shared in-memory state (rate limiters, caches, counters) must be reset or configured with a high limit before every test (@BeforeEach or @SpringBootTest properties), and tests that need a specific limit set it explicitly. A test must never depend on how many requests earlier tests made.
+- Exception to "never weaken": if the spec explicitly says an existing assertion is superseded (e.g. a field-list check that must now include a new column), you may re-create that file with the assertion updated and every other test unchanged.
 - Do not use Mockito features that require extra dependencies beyond spring-boot-starter-test.
 - If FEEDBACK lists failing tests or compile errors in the tests, fix those tests.
 
