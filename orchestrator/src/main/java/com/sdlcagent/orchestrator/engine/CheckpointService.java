@@ -7,6 +7,9 @@ public interface CheckpointService {
 
     void rollbackTo(String commit);
 
+    /** Keeps a commit reachable under a stable name (used to preserve a failed state before rolling back). */
+    default void tag(String name, String commit) { }
+
     CheckpointService NOOP = new CheckpointService() {
         @Override public String checkpoint(String label) { return null; }
         @Override public void rollbackTo(String commit) { }

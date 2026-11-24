@@ -62,6 +62,12 @@ public class WorkspaceGit implements CheckpointService {
         git("clean", "-fdq");
     }
 
+    @Override
+    public synchronized void tag(String name, String commit) {
+        init();
+        git("tag", "-f", name, commit);
+    }
+
     public synchronized String head() {
         return hasHead() ? git("rev-parse", "HEAD").trim() : null;
     }

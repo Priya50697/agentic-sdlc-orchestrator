@@ -76,7 +76,13 @@ public class WorkflowEngine {
     // ---------------------------------------------------------------- lifecycle
 
     public synchronized RunSnapshot start(String scenario, String requirement, List<Node> graph) {
+        return start(scenario, requirement, graph, null);
+    }
+
+    /** startCheckpoint: workspace commit to restore if the run safe-stops (brownfield); null keeps last-good rollback. */
+    public synchronized RunSnapshot start(String scenario, String requirement, List<Node> graph, String startCheckpoint) {
         s = new RunSnapshot();
+        s.startCheckpoint = startCheckpoint;
         s.runId = runId;
         s.scenario = scenario;
         for (Node n : graph) s.nodes.put(n.id, n);
@@ -353,9 +359,13 @@ public class WorkflowEngine {
         });
         n.outputArtifactIds = outputs;
         n.pendingChanges = new ArrayList<>(r.changes());
+        String superseded = noteSupersededTests(n, r.artifacts().get(StageGraph.SUPERSEDED_TESTS));
 
         List<ApprovalKind> need = new ArrayList<>();
         if (!cfg.riskClassifier.classify(n.pendingChanges).isEmpty()) need.add(ApprovalKind.RISK_ACTION);
+        if (superseded != null && need.contains(ApprovalKind.RISK_ACTION)) {
+            approvalSummaries.put(n.id + "|" + ApprovalKind.RISK_ACTION, superseded);
+        }
         if (a.gateApproval() != null) {
             need.add(a.gateApproval());
             if (a.gateApprovalSummary() != null) approvalSummaries.put(n.id + "|" + a.gateApproval(), a.gateApprovalSummary());
@@ -366,6 +376,23 @@ public class WorkflowEngine {
         } else {
             n.pendingApprovals = need;
             requestNext(n);
+        }
+    }
+
+    /** Audits each baseline test the agent changed on purpose and returns a reviewer-facing summary (or null). */
+    private String noteSupersededTests(Node n, String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            com.fasterxml.jackson.databind.JsonNode arr = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            List<String> lines = new ArrayList<>();
+            for (com.fasterxml.jackson.databind.JsonNode t : arr) {
+                String id = t.path("testId").asText(), reason = t.path("reason").asText();
+                audit.log(AuditEventType.BASELINE_TEST_SUPERSEDED, n.id, AuditLogger.data("testId", id, "reason", reason));
+                lines.add("Existing test changed: " + id + " - " + reason);
+            }
+            return lines.isEmpty() ? null : String.join("; ", lines);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -517,8 +544,17 @@ public class WorkflowEngine {
 
     private void safeStop(String reason, boolean rollback) {
         if (rollback) {
-            if (s.lastGoodCheckpoint != null) cfg.checkpoints.rollbackTo(s.lastGoodCheckpoint);
-            audit.log(AuditEventType.ROLLBACK, null, AuditLogger.data("to", s.lastGoodCheckpoint, "reason", reason));
+            // brownfield: undo the whole run so the baseline is clean again, but keep the failed state under a tag
+            String preserved = null;
+            if (s.startCheckpoint != null) {
+                preserved = cfg.checkpoints.checkpoint("run " + runId + " failed state (kept for inspection)");
+                if (preserved != null) cfg.checkpoints.tag("failed-" + runId, preserved);
+            }
+            String target = s.startCheckpoint != null ? s.startCheckpoint : s.lastGoodCheckpoint;
+            if (target != null) cfg.checkpoints.rollbackTo(target);
+            audit.log(AuditEventType.ROLLBACK, null, AuditLogger.data("to", target,
+                    "scope", s.startCheckpoint != null ? "run-start" : "last-good",
+                    "preservedCommit", preserved, "reason", reason));
         }
         s.state = RunState.SAFE_STOPPED;
         s.stopReason = reason;

@@ -2,6 +2,8 @@ package com.sdlcagent.orchestrator.agents.base;
 
 import com.sdlcagent.orchestrator.engine.TaskGraph;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Maps a failing source file or class name to the implementation node that owns it ("impl:T2"), using the
@@ -22,6 +24,8 @@ public final class OwnerResolver {
 
     static String owner(TaskGraph graph, String fileOrClass) {
         if (fileOrClass == null || fileOrClass.isBlank()) return null;
+        String byAc = ownerByCriterion(graph, fileOrClass);
+        if (byAc != null) return byAc;
         String f = fileOrClass.replace('\\', '/');
         String stem = stem(f);
         for (TaskGraph.TaskSpec t : graph.tasks()) {
@@ -37,6 +41,21 @@ public final class OwnerResolver {
                 for (String p : t.targetPaths()) {
                     if (stem(p.replace('\\', '/')).equals(tested)) return "impl:" + t.id();
                 }
+            }
+        }
+        return null;
+    }
+
+    private static final Pattern TEST_AC = Pattern.compile("#ac_?(\\d+)(?!\\d)", Pattern.CASE_INSENSITIVE);
+
+    /** A test id such as "FooTest#ac6_x" belongs to the task whose acceptanceCriteria include AC-6. */
+    static String ownerByCriterion(TaskGraph graph, String testId) {
+        Matcher m = TEST_AC.matcher(testId);
+        if (!m.find()) return null;
+        String num = m.group(1);
+        for (TaskGraph.TaskSpec t : graph.tasks()) {
+            for (String ac : t.acceptanceCriteria()) {
+                if (ac != null && ac.replaceFirst("(?i)^AC[-_]?", "").strip().equals(num)) return "impl:" + t.id();
             }
         }
         return null;

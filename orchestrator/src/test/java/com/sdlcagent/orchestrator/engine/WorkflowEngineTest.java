@@ -51,6 +51,40 @@ class WorkflowEngineTest extends EngineTestBase {
     }
 
     @Test
+    void brownfieldSafeStopRollsBackToRunStartAndKeepsTheFailedState() {
+        EngineConfig c = config();
+        c.executor("test-engineer", ctx -> NodeResult.failed(FailureInfo.of(FailureKind.OTHER, "boom")));
+        WorkflowEngine e = new WorkflowEngine("r1", paths(), clock, c);
+        e.start("brownfield", "extend it", StageGraph.standard(true), "base-commit");
+        RunSnapshot s = approveAll(e);
+
+        assertThat(s.state).isEqualTo(RunState.SAFE_STOPPED);
+        assertThat(s.lastGoodCheckpoint).isNotEqualTo("base-commit"); // implementation had passed and was checkpointed
+        assertThat(checkpoints.rollbacks).containsExactly("base-commit");
+        assertThat(checkpoints.tags).singleElement().satisfies(t -> assertThat(t).startsWith("failed-r1="));
+        var rollback = audit().stream().filter(x -> x.type() == AuditEventType.ROLLBACK).findFirst().orElseThrow();
+        assertThat(rollback.data()).containsEntry("scope", "run-start").containsEntry("to", "base-commit")
+                .containsKey("preservedCommit");
+    }
+
+    @Test
+    void supersededBaselineTestIsAuditedAndShownToTheReviewer() {
+        EngineConfig c = config();
+        c.executor("test-engineer", ctx -> NodeResult.ok(Map.of(
+                StageGraph.TEST_REPORT, "tests",
+                StageGraph.SUPERSEDED_TESTS, "[{\"testId\":\"AcceptanceTest#ac6\",\"reason\":\"expiry adds a column\"}]"),
+                List.of(FileChange.modify("src/test/java/AcceptanceTest.java", "class T {}")), NodeResult.Usage.NONE));
+        WorkflowEngine e = newEngine(c);
+        RunSnapshot s = runUntilPending(e, com.sdlcagent.orchestrator.governance.ApprovalKind.RISK_ACTION);
+
+        assertThat(s.state).isEqualTo(RunState.WAITING_HUMAN);
+        assertThat(e.approvals().pending().get(0).summary())
+                .contains("Existing test changed: AcceptanceTest#ac6").contains("expiry adds a column");
+        assertThat(count(AuditEventType.BASELINE_TEST_SUPERSEDED)).isEqualTo(1);
+        assertThat(approveAll(e).state).isEqualTo(RunState.COMPLETED);
+    }
+
+    @Test
     void retryFeedsErrorsBackAndRecordsMttr() {
         EngineConfig c = config();
         AtomicInteger n = new AtomicInteger();

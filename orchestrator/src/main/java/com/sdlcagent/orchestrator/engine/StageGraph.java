@@ -13,6 +13,8 @@ public final class StageGraph {
     public static final String PLAN = "architecture-plan";
     public static final String TASK_GRAPH = "task-graph";
     public static final String TEST_REPORT = "test-report";
+    /** JSON list of {testId, reason}: baseline tests the test engineer changed on purpose. Present only when non-empty. */
+    public static final String SUPERSEDED_TESTS = "superseded-tests";
     public static final String DOC_REPORT = "doc-report";
     public static final String LIVE_REPORT = "live-report";
     public static final String RELEASE_REPORT = "release-report";

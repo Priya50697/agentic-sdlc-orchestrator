@@ -16,6 +16,8 @@ public class RunSnapshot {
     public int llmCalls;
     public int backEdges;
     public String lastGoodCheckpoint;
+    /** Workspace commit taken when a brownfield run began; a safe-stop rolls back to it. Null for greenfield. */
+    public String startCheckpoint;
     public String stopReason;
     public List<ApprovalRequest> approvals = new ArrayList<>();
     /** "nodeId|signature" -> occurrences, used to tell a repeated failure from a first one. */

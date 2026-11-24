@@ -171,7 +171,11 @@ public final class SurefireParser {
             String frame = topProjectFrame(t.stack(), projectPackage);
             String message = failing.stream().limit(10)
                     .map(c -> c.id() + ": " + c.type() + " " + c.message()).reduce((a, b) -> a + "\n" + b).orElse("");
-            if (assertion) return new FailureInfo(FailureKind.ASSERTION, message, t.id(), ownerOf.apply(t.className()));
+            if (assertion) {
+                String owner = ownerOf.apply(t.className());
+                if (owner == null) owner = ownerOf.apply(t.id()); // acN_ test name -> task that lists AC-N
+                return new FailureInfo(FailureKind.ASSERTION, message, t.id(), owner);
+            }
             boolean frameInTest = frame != null && frame.matches(".*(Test|Tests|IT)$");
             FailureKind kind = frame != null && !frameInTest ? FailureKind.EXCEPTION_MAIN : FailureKind.OTHER;
             return new FailureInfo(kind, message, t.id(), frame == null ? null : ownerOf.apply(frame));

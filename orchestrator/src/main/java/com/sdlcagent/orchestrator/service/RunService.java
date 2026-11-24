@@ -16,6 +16,7 @@ import com.sdlcagent.orchestrator.persistence.RunPaths;
 import com.sdlcagent.orchestrator.persistence.RunRepository;
 import com.sdlcagent.orchestrator.workspace.Scaffolder;
 import com.sdlcagent.orchestrator.workspace.SandboxedFileWriter;
+import com.sdlcagent.orchestrator.workspace.TestInventory;
 import com.sdlcagent.orchestrator.workspace.WorkspaceGit;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -78,11 +79,16 @@ public class RunService {
         if (requirement == null || requirement.isBlank()) throw new IllegalArgumentException("requirement is empty");
         String runId = "run-" + STAMP.format(LocalDateTime.now(ZoneOffset.UTC)) + "-"
                 + UUID.randomUUID().toString().substring(0, 4);
+        String startCommit = null;
         if (greenfield) scaffolder.scaffold();
-        else git.checkpoint("run " + runId + " start");
+        else {
+            startCommit = git.checkpoint("run " + runId + " start");
+            // the existing tests are the contract this run must preserve; changing one needs an explicit, audited reason
+            TestInventory.snapshot(writer.root(), paths.runDir(runId).resolve(TestInventory.BASELINE_DIR));
+        }
         WorkflowEngine engine = new WorkflowEngine(runId, paths, clock, newConfig(runId));
         List<Node> graph = StageGraph.standard(greenfield);
-        engine.start(scenario == null ? "custom" : scenario, requirement, graph);
+        engine.start(scenario == null ? "custom" : scenario, requirement, graph, startCommit);
         engines.put(runId, engine);
         return runId;
     }

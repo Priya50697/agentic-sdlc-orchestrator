@@ -39,6 +39,7 @@ abstract class EngineTestBase {
     static class RecordingCheckpoints implements CheckpointService {
         final List<String> commits = new CopyOnWriteArrayList<>();
         final List<String> rollbacks = new CopyOnWriteArrayList<>();
+        final List<String> tags = new CopyOnWriteArrayList<>();
 
         @Override public String checkpoint(String label) {
             String c = "c" + (commits.size() + 1) + ":" + label;
@@ -47,6 +48,7 @@ abstract class EngineTestBase {
         }
 
         @Override public void rollbackTo(String commit) { rollbacks.add(commit); }
+        @Override public void tag(String name, String commit) { tags.add(name + "=" + commit); }
     }
 
     @TempDir Path dir;
