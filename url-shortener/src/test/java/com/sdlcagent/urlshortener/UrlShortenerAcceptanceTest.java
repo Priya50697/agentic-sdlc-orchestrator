@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sdlcagent.urlshortener.dao.UrlMapping;
 import com.sdlcagent.urlshortener.dao.UrlMappingRepository;
+import com.sdlcagent.urlshortener.service.RateLimitService;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,9 +43,13 @@ class UrlShortenerAcceptanceTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private RateLimitService rateLimitService;
+
     @BeforeEach
     void clean() {
         repository.deleteAll();
+        rateLimitService.reset();
     }
 
     private String json(String url) throws Exception {
@@ -215,9 +220,11 @@ class UrlShortenerAcceptanceTest {
     void ac6_noAnalyticsStored() throws Exception {
         List<String> fieldNames = new ArrayList<>();
         for (Field field : UrlMapping.class.getDeclaredFields()) {
-            fieldNames.add(field.getName().toLowerCase());
+            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                fieldNames.add(field.getName().toLowerCase());
+            }
         }
-        assertThat(fieldNames).containsExactlyInAnyOrder("id", "code", "originalurl");
+        assertThat(fieldNames).containsExactlyInAnyOrder("id", "code", "originalurl", "expiresat");
 
         String code = codeOf(shorten("https://example.com/visits"));
         mockMvc.perform(get("/" + code)).andExpect(status().isFound());

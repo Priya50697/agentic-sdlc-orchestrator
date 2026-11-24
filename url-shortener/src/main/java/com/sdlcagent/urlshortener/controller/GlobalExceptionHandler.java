@@ -1,7 +1,12 @@
 package com.sdlcagent.urlshortener.controller;
 
 import com.sdlcagent.urlshortener.dto.ErrorResponse;
+import com.sdlcagent.urlshortener.service.AliasAlreadyExistsException;
 import com.sdlcagent.urlshortener.service.CodeNotFoundException;
+import com.sdlcagent.urlshortener.service.InvalidAliasException;
+import com.sdlcagent.urlshortener.service.InvalidTtlException;
+import com.sdlcagent.urlshortener.service.LinkExpiredException;
+import com.sdlcagent.urlshortener.service.RateLimitExceededException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -34,6 +39,31 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex) {
         return build(HttpStatus.BAD_REQUEST, "Malformed or missing request body");
+    }
+
+    @ExceptionHandler(InvalidAliasException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidAlias(InvalidAliasException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage() != null ? ex.getMessage() : "Invalid alias");
+    }
+
+    @ExceptionHandler(InvalidTtlException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTtl(InvalidTtlException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage() != null ? ex.getMessage() : "Invalid ttlSeconds");
+    }
+
+    @ExceptionHandler(AliasAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleAliasExists(AliasAlreadyExistsException ex) {
+        return build(HttpStatus.CONFLICT, "Alias already in use");
+    }
+
+    @ExceptionHandler(LinkExpiredException.class)
+    public ResponseEntity<ErrorResponse> handleExpired(LinkExpiredException ex) {
+        return build(HttpStatus.GONE, "Short link has expired");
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimit(RateLimitExceededException ex) {
+        return build(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded, try again later");
     }
 
     @ExceptionHandler(CodeNotFoundException.class)

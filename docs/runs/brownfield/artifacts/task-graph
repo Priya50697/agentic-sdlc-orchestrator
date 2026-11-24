@@ -1,0 +1,51 @@
+{
+  "tasks" : [ {
+    "id" : "T1",
+    "description" : "Add nullable expiresAt (Instant) and a unique constraint on code to UrlMapping. Add existsByCode to UrlMappingRepository, and findByCode if it is not already present. Existing rows keep a NULL expiry.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/dao/UrlMapping.java", "src/main/java/com/sdlcagent/urlshortener/dao/UrlMappingRepository.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-2", "AC-4", "AC-6", "AC-8" ]
+  }, {
+    "id" : "T2",
+    "description" : "Create the service exceptions for 409, 410 and 429.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/service/AliasAlreadyExistsException.java", "src/main/java/com/sdlcagent/urlshortener/service/LinkExpiredException.java", "src/main/java/com/sdlcagent/urlshortener/service/RateLimitExceededException.java" ],
+    "acceptanceCriteria" : [ "AC-2", "AC-6", "AC-7" ]
+  }, {
+    "id" : "T3",
+    "description" : "Create InvalidAliasException and InvalidTtlException, plus AliasValidator (pattern, length 3-32, reserved names, case-sensitive) and TtlValidator (strict integral > 0 from a JsonNode; reject fractional, textual, zero and negative values).",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/service/InvalidAliasException.java", "src/main/java/com/sdlcagent/urlshortener/service/InvalidTtlException.java", "src/main/java/com/sdlcagent/urlshortener/validator/AliasValidator.java", "src/main/java/com/sdlcagent/urlshortener/validator/TtlValidator.java" ],
+    "acceptanceCriteria" : [ "AC-3", "AC-4", "AC-5" ]
+  }, {
+    "id" : "T4",
+    "description" : "Extend the ShortenRequest record with customAlias (String) and ttlSeconds (JsonNode, so Jackson does not coerce values). Keep the ShortenRequest(String url) compatibility constructor and the existing url validation.",
+    "dependsOn" : [ ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/dto/ShortenRequest.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-4", "AC-5", "AC-8" ]
+  }, {
+    "id" : "T5",
+    "description" : "Add the UTC Clock bean (ClockConfig). Implement the thread-safe fixed-window per-IP RateLimitService with stale-entry eviction and a reset() hook, reading max and window via @Value with defaults 10 and 60s. Modify application.yml to add the rate-limit properties (ratelimit.max-requests, ratelimit.window-seconds) without removing existing config.",
+    "dependsOn" : [ "T2" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/util/ClockConfig.java", "src/main/java/com/sdlcagent/urlshortener/service/RateLimitService.java", "src/main/resources/application.yml" ],
+    "acceptanceCriteria" : [ "AC-7" ]
+  }, {
+    "id" : "T6",
+    "description" : "Update UrlShortenerService. On create: validate alias and ttl, compute expiresAt = now + ttl via the injected Clock, and use the alias as the code (existsByCode pre-check, with DataIntegrityViolationException translated to AliasAlreadyExistsException). Without an alias, generate a code with retry on collision. On resolve: throw CodeNotFoundException for an unknown code and LinkExpiredException when expiresAt is not after now; null expiry never expires. Update CodeGenerator if needed for the retry flow.",
+    "dependsOn" : [ "T1", "T2", "T3", "T4", "T5" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/service/UrlShortenerService.java", "src/main/java/com/sdlcagent/urlshortener/util/CodeGenerator.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-2", "AC-3", "AC-4", "AC-5", "AC-6", "AC-8" ]
+  }, {
+    "id" : "T7",
+    "description" : "Update UrlShortenerController to pass customAlias and ttlSeconds to the service while keeping the existing response and redirect behaviour. Extend GlobalExceptionHandler with 400 (InvalidAlias, InvalidTtl), 409, 410 and 429 handlers using the existing ErrorResponse format. Keep the handlers for unreadable body (400), no-resource (404) and generic errors unchanged.",
+    "dependsOn" : [ "T2", "T3", "T4", "T6" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/controller/UrlShortenerController.java", "src/main/java/com/sdlcagent/urlshortener/controller/GlobalExceptionHandler.java" ],
+    "acceptanceCriteria" : [ "AC-1", "AC-2", "AC-3", "AC-5", "AC-6", "AC-7", "AC-8" ]
+  }, {
+    "id" : "T8",
+    "description" : "Add RateLimitInterceptor (calls RateLimitService.check with request.getRemoteAddr() in preHandle, before body binding and validation, so any outcome counts toward the limit) and WebMvcConfig registering it for POST /shorten only.",
+    "dependsOn" : [ "T2", "T5" ],
+    "targetPaths" : [ "src/main/java/com/sdlcagent/urlshortener/controller/RateLimitInterceptor.java", "src/main/java/com/sdlcagent/urlshortener/controller/WebMvcConfig.java" ],
+    "acceptanceCriteria" : [ "AC-7", "AC-8" ]
+  } ]
+}

@@ -1,0 +1,4 @@
+[ {
+  "testId" : "UrlShortenerAcceptanceTest#ac6_noAnalyticsStored",
+  "reason" : "The spec adds an optional link expiry stored as a nullable expiresAt field on UrlMapping, so the literal field list [id, code, originalUrl] can no longer hold. The assertion now ignores static fields and allows expiresAt, and still forbids analytics fields."
+} ]

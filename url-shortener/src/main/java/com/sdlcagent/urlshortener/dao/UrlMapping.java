@@ -1,5 +1,7 @@
 package com.sdlcagent.urlshortener.dao;
 
+import java.time.Instant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -18,11 +20,14 @@ public class UrlMapping {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "code", nullable = false, unique = true, length = 16)
+    @Column(name = "code", nullable = false, unique = true, length = 32)
     private String code;
 
     @Column(name = "original_url", nullable = false, length = 2048)
     private String originalUrl;
+
+    @Column(name = "expires_at", nullable = true)
+    private Instant expiresAt;
 
     protected UrlMapping() {
         // required by JPA
@@ -31,6 +36,12 @@ public class UrlMapping {
     public UrlMapping(String code, String originalUrl) {
         this.code = code;
         this.originalUrl = originalUrl;
+    }
+
+    public UrlMapping(String code, String originalUrl, Instant expiresAt) {
+        this.code = code;
+        this.originalUrl = originalUrl;
+        this.expiresAt = expiresAt;
     }
 
     public Long getId() {
@@ -51,5 +62,13 @@ public class UrlMapping {
 
     public void setOriginalUrl(String originalUrl) {
         this.originalUrl = originalUrl;
+    }
+
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(Instant expiresAt) {
+        this.expiresAt = expiresAt;
     }
 }

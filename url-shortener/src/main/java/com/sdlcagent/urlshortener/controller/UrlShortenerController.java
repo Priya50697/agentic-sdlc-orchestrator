@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URI;
-
 @RestController
 public class UrlShortenerController {
 
@@ -26,7 +24,7 @@ public class UrlShortenerController {
 
     @PostMapping("/shorten")
     public ResponseEntity<ShortenResponse> shorten(@Valid @RequestBody ShortenRequest request) {
-        String code = service.shorten(request.url());
+        String code = service.shorten(request.url(), request.customAlias(), request.ttlSeconds());
         return ResponseEntity.status(HttpStatus.CREATED).body(new ShortenResponse(code));
     }
 

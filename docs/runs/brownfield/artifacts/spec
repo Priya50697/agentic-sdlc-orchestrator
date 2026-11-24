@@ -1,0 +1,90 @@
+{
+  "title" : "URL Shortener: Custom Aliases, Link Expiry, and Per-IP Creation Rate Limit",
+  "summary" : "Extend the existing URL shortener so callers can request a custom short code, create links with an optional TTL after which they return 410 Gone, and so link creation is rate limited per client IP with 429 when exceeded. Existing shortening and redirect behaviour must remain unchanged.",
+  "stories" : [ {
+    "id" : "S1",
+    "text" : "As an API caller, I want to request a specific short code (custom alias) when creating a link, so that the short URL is memorable and meaningful."
+  }, {
+    "id" : "S2",
+    "text" : "As an API caller, I want to give a link a time-to-live in seconds, so that the link stops working after a chosen period."
+  }, {
+    "id" : "S3",
+    "text" : "As a visitor, I want an expired link to clearly report that it is gone, so that I can distinguish it from a link that never existed."
+  }, {
+    "id" : "S4",
+    "text" : "As the service operator, I want link creation rate limited per client IP, so that a single client cannot abuse the service."
+  }, {
+    "id" : "S5",
+    "text" : "As an existing user of the service, I want current create and redirect behaviour to keep working unchanged, so that the new features do not break my integrations."
+  } ],
+  "acceptanceCriteria" : [ {
+    "id" : "AC-1",
+    "storyId" : "S1",
+    "text" : "When a create request includes a custom alias that is URL-safe and not already in use, the link is created and the returned short code equals the requested alias; requesting that short code redirects to the target URL."
+  }, {
+    "id" : "AC-2",
+    "storyId" : "S1",
+    "text" : "When a create request includes an alias that is already in use, the response is 409 Conflict and the existing link is not modified."
+  }, {
+    "id" : "AC-3",
+    "storyId" : "S1",
+    "text" : "When a create request includes an alias containing characters that are not URL-safe, the response is 400 Bad Request and no link is created."
+  }, {
+    "id" : "AC-4",
+    "storyId" : "S2",
+    "text" : "When ttlSeconds is a strict positive integer, the link is created successfully and has an expiry time of creation time plus ttlSeconds; when ttlSeconds is omitted, the link never expires."
+  }, {
+    "id" : "AC-5",
+    "storyId" : "S2",
+    "text" : "When ttlSeconds is zero, negative, fractional (e.g. 1.5), or non-numeric (e.g. \"abc\"), the response is 400 Bad Request and no link is created."
+  }, {
+    "id" : "AC-6",
+    "storyId" : "S3",
+    "text" : "Requesting the short code of a link whose expiry time has passed returns 410 Gone, while a short code that never existed still returns its existing not-found response (404)."
+  }, {
+    "id" : "AC-7",
+    "storyId" : "S4",
+    "text" : "When a single client IP exceeds the configured number of link creation requests within the configured window, further creation requests from that IP return 429 Too Many Requests; requests from other IPs are unaffected."
+  }, {
+    "id" : "AC-8",
+    "storyId" : "S5",
+    "text" : "Create requests without alias or ttlSeconds still generate a short code and succeed as before, and redirects for existing non-expiring links behave as before."
+  } ],
+  "ambiguities" : [ {
+    "id" : "A1",
+    "question" : "What are the rate limit values (maximum creation requests and window length) per IP?",
+    "severity" : "MINOR",
+    "proposedDefault" : "10 link creation requests per IP per 60-second window, configurable via application properties."
+  }, {
+    "id" : "A2",
+    "question" : "What counts as URL-safe for an alias, and are there length limits?",
+    "severity" : "MINOR",
+    "proposedDefault" : "Alias must match ^[A-Za-z0-9_-]+$ with a length of 3 to 32 characters; violations return 400."
+  }, {
+    "id" : "A3",
+    "question" : "Does the 429 response apply to all creation attempts, including ones that would fail validation (400/409), or only to valid requests?",
+    "severity" : "MINOR",
+    "proposedDefault" : "Every request to the creation endpoint counts toward the limit regardless of outcome, and the limit check happens before validation."
+  }, {
+    "id" : "A4",
+    "question" : "How is the client IP determined when the service sits behind a proxy (remote address vs X-Forwarded-For)?",
+    "severity" : "MINOR",
+    "proposedDefault" : "Use the servlet request remote address; X-Forwarded-For is not trusted."
+  }, {
+    "id" : "A5",
+    "question" : "Should the rate limit state survive restarts and be shared across multiple instances?",
+    "severity" : "MINOR",
+    "proposedDefault" : "In-memory per-instance rate limiting; state is reset on restart."
+  }, {
+    "id" : "A6",
+    "question" : "Should auto-generated short codes be prevented from colliding with custom aliases, and are any aliases reserved (e.g. API path names)?",
+    "severity" : "MINOR",
+    "proposedDefault" : "Auto-generated codes and aliases share one unique namespace so collisions return 409 for aliases or are regenerated for generated codes; aliases that clash with API route names are rejected with 400."
+  }, {
+    "id" : "A7",
+    "question" : "Is the alias comparison case-sensitive?",
+    "severity" : "MINOR",
+    "proposedDefault" : "Case-sensitive: 'Foo' and 'foo' are different aliases."
+  } ],
+  "nonFunctional" : [ "Persistence: alias (short code) must be unique, enforced by a database uniqueness constraint so concurrent creations of the same alias cannot both succeed.", "Persistence: expiry is stored as an absolute timestamp (UTC) on the link; expiry is evaluated against the current time at request time.", "Reliability: rate limiting must be thread-safe under concurrent requests from the same IP.", "Backward compatibility: existing API contracts, persisted data, and links without expiry must continue to work without migration breaking them.", "Validation: ttlSeconds must be parsed strictly as an integer; lenient coercion of fractional or string values to integers is not allowed.", "Observability: 400, 409, 410 and 429 responses use a consistent error body format consistent with the existing service." ]
+}

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Produces random 7-character base62 codes using a SecureRandom source.
+ * The service regenerates when a code collides with an existing code or alias.
  */
 @Component
 public class CodeGenerator {

@@ -1,0 +1,105 @@
+{
+  "overview" : "Extend POST /shorten with optional customAlias and strictly-typed ttlSeconds, store an absolute UTC expiry on UrlMapping, and enforce alias uniqueness with a DB unique constraint on code. Translate DataIntegrityViolationException to 409 for aliases and regenerate for generated codes. Redirect returns 410 for expired links and keeps 404 for unknown codes. A thread-safe in-memory fixed-window per-IP rate limiter (RateLimitService) is invoked from a HandlerInterceptor on POST /shorten. The interceptor runs before body binding and validation, so every request counts and 429 takes precedence over 400/409. The interceptor uses request.getRemoteAddr() and ignores X-Forwarded-For. Limits come from application.yml (default 10 requests per 60s). An injectable Clock bean (util/ClockConfig) makes expiry and the rate window testable. ttlSeconds is bound as a JsonNode in ShortenRequest and parsed strictly in TtlValidator: only integral JSON numbers greater than 0 are accepted. This avoids Jackson coercion of 1.5 or \"5\". Aliases must match ^[A-Za-z0-9_-]+$ with length 3-32, are case-sensitive, and reserved route names are rejected. Existing rows keep a NULL expiry and are non-expiring. All new errors use the existing ErrorResponse(status, error, message) format. No config/ package is used, because it is not in the mandated layout.",
+  "components" : [ {
+    "name" : "UrlMapping",
+    "layer" : "dao",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dao/UrlMapping.java",
+    "responsibility" : "JPA entity; adds nullable expiresAt (Instant, UTC) column and a unique constraint on code."
+  }, {
+    "name" : "UrlMappingRepository",
+    "layer" : "dao",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dao/UrlMappingRepository.java",
+    "responsibility" : "Spring Data repository; findByCode and existsByCode for the shared code/alias namespace."
+  }, {
+    "name" : "AliasAlreadyExistsException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/AliasAlreadyExistsException.java",
+    "responsibility" : "Thrown when a requested alias is taken; maps to 409."
+  }, {
+    "name" : "LinkExpiredException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/LinkExpiredException.java",
+    "responsibility" : "Thrown when an existing link's expiry has passed; maps to 410."
+  }, {
+    "name" : "RateLimitExceededException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/RateLimitExceededException.java",
+    "responsibility" : "Thrown when an IP exceeds the creation quota; maps to 429."
+  }, {
+    "name" : "InvalidAliasException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/InvalidAliasException.java",
+    "responsibility" : "Thrown for malformed, wrong-length or reserved aliases; maps to 400."
+  }, {
+    "name" : "InvalidTtlException",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/InvalidTtlException.java",
+    "responsibility" : "Thrown for zero, negative, fractional or non-numeric ttlSeconds; maps to 400."
+  }, {
+    "name" : "AliasValidator",
+    "layer" : "validator",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/validator/AliasValidator.java",
+    "responsibility" : "Validates alias pattern ^[A-Za-z0-9_-]+$, length 3-32, and reserved names (e.g. shorten)."
+  }, {
+    "name" : "TtlValidator",
+    "layer" : "validator",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/validator/TtlValidator.java",
+    "responsibility" : "Strictly parses a JsonNode ttlSeconds: null/missing means no TTL; otherwise it must be an integral number > 0 (long range), else InvalidTtlException."
+  }, {
+    "name" : "ShortenRequest",
+    "layer" : "dto",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/dto/ShortenRequest.java",
+    "responsibility" : "Request record with url, customAlias and JsonNode ttlSeconds; keeps a ShortenRequest(String url) compatibility constructor."
+  }, {
+    "name" : "ClockConfig",
+    "layer" : "util",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/util/ClockConfig.java",
+    "responsibility" : "Exposes a UTC system Clock bean that can be overridden in tests."
+  }, {
+    "name" : "RateLimitService",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/RateLimitService.java",
+    "responsibility" : "Thread-safe fixed-window per-IP limiter (ConcurrentHashMap.compute with window start and count). Reads max and window from application.yml via @Value, evicts stale entries, and exposes reset() for tests."
+  }, {
+    "name" : "UrlShortenerService",
+    "layer" : "service",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/service/UrlShortenerService.java",
+    "responsibility" : "Create (alias or generated code, expiry computation, DB-constraint-based conflict handling) and resolve (404 unknown, 410 expired)."
+  }, {
+    "name" : "CodeGenerator",
+    "layer" : "util",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/util/CodeGenerator.java",
+    "responsibility" : "Generates random codes; the service regenerates when a code collides with an existing code or alias."
+  }, {
+    "name" : "RateLimitInterceptor",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/RateLimitInterceptor.java",
+    "responsibility" : "HandlerInterceptor that calls RateLimitService.check(remoteAddr) in preHandle, before body binding; throws RateLimitExceededException."
+  }, {
+    "name" : "WebMvcConfig",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/WebMvcConfig.java",
+    "responsibility" : "WebMvcConfigurer registering RateLimitInterceptor for POST /shorten only."
+  }, {
+    "name" : "UrlShortenerController",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/UrlShortenerController.java",
+    "responsibility" : "POST /shorten delegates the new fields to the service; GET /{code} redirects as before."
+  }, {
+    "name" : "GlobalExceptionHandler",
+    "layer" : "controller",
+    "path" : "src/main/java/com/sdlcagent/urlshortener/controller/GlobalExceptionHandler.java",
+    "responsibility" : "Maps the new exceptions to 400/409/410/429 in the existing ErrorResponse format; keeps the existing 404 and unreadable-body 400 handlers and never leaks stack traces."
+  } ],
+  "endpoints" : [ {
+    "verb" : "POST",
+    "path" : "/shorten",
+    "description" : "Create a short link. Body: url, optional customAlias, optional ttlSeconds (strict positive integer). Returns the existing success response with the short code equal to the alias when given. Errors: 400 (invalid alias or ttl), 409 (alias in use), 429 (rate limited per IP)."
+  }, {
+    "verb" : "GET",
+    "path" : "/{code}",
+    "description" : "Redirect to the target URL. 404 if the code never existed, 410 if the link has expired."
+  } ],
+  "dataModel" : [ "UrlMapping(id:Long, code:String unique not null, originalUrl:String, createdAt:Instant, expiresAt:Instant nullable UTC)" ],
+  "tasks" : [ ]
+}

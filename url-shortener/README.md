@@ -1,54 +1,86 @@
-# Minimal URL Shortener Service
+# URL Shortener
 
 ## Overview
 
-A small Spring Boot 3 (Java 21) service that turns a long URL into a short code and redirects visitors from the short code to the original URL.
+A Spring Boot URL shortener service. Callers submit a long URL and receive a short code, and visiting the short code redirects to the original URL.
 
-- Only absolute `http` and `https` URLs with a non-empty host are accepted.
-- Each request to shorten generates a new unique 7-character base62 code (no deduplication of identical URLs).
-- Mappings are stored in a file-based H2 database via Spring Data JPA, so they survive restarts. The schema is created automatically at startup. Code uniqueness is enforced by a unique constraint on the `code` column, and a collision results in regeneration rather than overwriting.
-- No authentication, no analytics (no visit counts are stored or exposed), and no calls to external services.
-- Errors are returned as a consistent JSON body and never expose stack traces.
+Features:
+
+- Optional custom alias used as the short code.
+- Optional time-to-live (`ttlSeconds`). After expiry the link returns 410 Gone.
+- Per-client-IP rate limiting on link creation (429 Too Many Requests when exceeded).
+- Existing behaviour is unchanged: requests without `customAlias` or `ttlSeconds` get a generated code, and existing links never expire.
+
+Design notes:
+
+- Aliases and generated codes share one unique namespace. Uniqueness is enforced by a database unique constraint on the code.
+- Expiry is stored as an absolute UTC timestamp and checked against the current time on each request. Links without expiry have a null value.
+- Rate limiting is an in-memory, thread-safe, fixed-window limiter per instance. State resets on restart. The client IP is the servlet remote address, and `X-Forwarded-For` is not trusted.
+- Every creation request counts toward the limit regardless of outcome. The check runs before body validation, so 429 takes precedence over 400 and 409.
+- All errors use one JSON body: `{"status": <int>, "error": "<text>", "message": "<text>"}`. Stack traces are never returned.
 
 ## API
 
 ### `POST /shorten`
 
-Creates a short code for a URL.
+Create a short link.
 
-**Request body** (`application/json`):
+Request body (JSON):
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `url` | string | yes | Must be a valid http or https URL. |
+| `customAlias` | string | no | Must match `^[A-Za-z0-9_-]+$`, 3 to 32 characters, case-sensitive. Reserved route names (e.g. `shorten`) are rejected. |
+| `ttlSeconds` | integer | no | Strictly a positive integer. If omitted, the link never expires. Zero, negative, fractional (`1.5`) and non-numeric (`"abc"`) values are rejected. |
+
+Example:
 
 ```json
-{ "url": "https://example.com/some/long/path" }
+{ "url": "https://example.com/some/long/path", "customAlias": "my-link", "ttlSeconds": 3600 }
 ```
 
-**Responses**
+Success response: `201 Created`
 
-| Status | Meaning | Body |
-|--------|---------|------|
-| `201 Created` | URL stored | `{ "code": "aB3dE9x" }` |
-| `400 Bad Request` | `url` missing, blank, malformed, or scheme is not `http`/`https`; nothing is persisted | Error JSON |
+```json
+{ "code": "my-link" }
+```
+
+The `code` equals `customAlias` when one is given, otherwise it is generated.
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| 201 | Link created. |
+| 400 | Invalid or missing `url`, malformed JSON body, invalid alias (bad characters, wrong length, reserved name) or invalid `ttlSeconds`. No link is created. |
+| 409 | The alias is already in use. The existing link is not modified. |
+| 429 | The client IP exceeded the creation rate limit. |
 
 ### `GET /{code}`
 
-Redirects to the original URL for a known code.
+Resolve a short code and redirect to the original URL.
 
-**Responses**
+Path parameter: `code`, the generated code or custom alias.
 
-| Status | Meaning | Body |
-|--------|---------|------|
-| `302 Found` | Code is known | Empty body; `Location` header set to the original URL |
-| `404 Not Found` | Code is unknown | Error JSON |
+Response: a redirect to the target URL, with the target in the `Location` header.
 
-### Error body
+Status codes:
 
-All error responses use the same JSON shape:
+| Status | Meaning |
+|---|---|
+| 3xx | Redirect to the original URL. |
+| 404 | The code never existed. |
+| 410 | The link existed but has expired. |
 
-```json
-{ "status": 400, "error": "Bad Request", "message": "..." }
+### Rate limit configuration
+
+Defaults are 10 creation requests per IP per 60-second window. Override them in `application.yml` or application properties:
+
+```yaml
+ratelimit:
+  max-requests: 10
+  window-seconds: 60
 ```
-
-Unexpected server errors return a generic message with status `500`; no stack traces are exposed.
 
 ## Running
 
@@ -56,10 +88,12 @@ Unexpected server errors return a generic message with status `500`; no stack tr
 mvnw spring-boot:run
 ```
 
-The service uses a file-based H2 database as its only datastore, so stored mappings persist across restarts.
+On Windows PowerShell use `.\mvnw spring-boot:run`.
 
 ## Testing
 
 ```
 mvnw test
 ```
+
+On Windows PowerShell use `.\mvnw test`.

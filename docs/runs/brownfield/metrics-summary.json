@@ -1,0 +1,21 @@
+{
+  "runId" : "run-20261124-142820-c6a0",
+  "outcome" : "COMPLETED",
+  "nodesPassed" : 20,
+  "nodesFailed" : 1,
+  "nodeSuccessRate" : 0.9523809523809523,
+  "retries" : 1,
+  "routeBacks" : 0,
+  "rollbacks" : 0,
+  "invalidations" : 0,
+  "policyViolations" : 0,
+  "humanApprovals" : 3,
+  "llmCalls" : 17,
+  "inputTokens" : 156947,
+  "outputTokens" : 47999,
+  "costUsd" : 1.0706834000000003,
+  "failuresRecovered" : 1,
+  "mttrMillis" : 94517.0,
+  "e2eLatencyMillis" : 310736,
+  "cacheHits" : 0
+}

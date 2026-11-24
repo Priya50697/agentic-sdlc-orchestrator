@@ -15,3 +15,7 @@ spring:
 server:
   error:
     include-stacktrace: never
+
+ratelimit:
+  max-requests: 10
+  window-seconds: 60
